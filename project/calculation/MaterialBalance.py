@@ -1,6 +1,14 @@
 
-from qualifyingWork.project.ObjectModels.grid.py import grid
+from project.ObjectModels import grid
 
-a = GridsCell()
 
-print(a)
+CellsArray =[]
+
+for i in range(1, 3):
+    CellsArray.append(grid.GridsCell(cellNumber=i))
+
+for cells in CellsArray:
+    cells.coordinateX = cells.cellNumber
+
+
+print(CellsArray)
