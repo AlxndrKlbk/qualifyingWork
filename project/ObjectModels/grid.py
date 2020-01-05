@@ -17,13 +17,13 @@ class GridsCell():
     CellHeight = float #мощность ННТ в ячейке
 
 
-    def __init__(self):
+    def __init__(self, cellNumber):
         self.coordinateX = int
         self.coordinateY = int
-        self.cellNumber = int   #номер ячейки
+        self.cellNumber = cellNumber   #номер ячейки
         self.layerPressure = float  #текущее пластовое давление в ячейке (атмосферы)
-        self.neighbours = dict  #словарь с номерами соседних ячеек
-        self.Qwest = list   #список перетоков в ячейку слева
+        self.neighbours = {}  #словарь с номерами соседних ячеек
+        self.Qwest = []   #список перетоков в ячейку слева
         self.Qnorth = list  #список перетоков в ячейку сверху
         self.Qeast = list   #список перетоков в ячейку справа
         self.Qsouth = list  #список перетоков в ячейку снизу
@@ -45,10 +45,11 @@ class GridsCell():
         pass
 
 
-a = GridsCell()
-b = GridsCell()
+array_of_cells = []
+for i in range(10):
+    array_of_cells.append(GridsCell(
+        cellNumber=i
+    ))
 
-print(type(a))
-a.coordinateX = 2
-print(a.coordinateX)
-print(b.coordinateX)
+
+print(len(array_of_cells))
