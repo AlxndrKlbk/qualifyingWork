@@ -1,7 +1,7 @@
 import numpy
 
 
-class GridsCell():
+class GridsCell:
     """
     в классовых переменных указаные общие параметры для ячеек:
     -----------
@@ -18,10 +18,10 @@ class GridsCell():
 
 
     def __init__(self, cellNumber):
-        self.coordinateX = list
-        self.coordinateY = int()
+        self.coordinateX = []
+        self.coordinateY = []
         self.cellNumber = cellNumber   #номер ячейки
-        self.layerPressure = int()  #текущее пластовое давление в ячейке (атмосферы)
+        self.layerPressure = {}  #пластовое давление в ячейке (атмосферы) на начало месяца
         self.neighbours = {}  #словарь с номерами соседних ячеек
         self.Qwest = []   #список перетоков в ячейку слева
         self.Qnorth = []  #список перетоков в ячейку сверху
@@ -43,7 +43,10 @@ class GridsCell():
         класса GridCell
         формат словаря {north : number , west :number ...}
         """
+
+        self.coordinateX = "meme"
         pass
+
 
 if __name__ == "__main__":
     array_of_cells = []
