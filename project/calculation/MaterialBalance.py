@@ -1,20 +1,23 @@
-
 from project.ObjectModels import grid
 import numpy as np
+import time
 
-def initialization(Nx, Ny, well_location = None):
+def initialization(Nx, Ny, well_location=None):
 
-    amount_of_cells = Nx * Ny +1
-    for i in range(1, amount_of_cells):
-        CellsBox.append(grid.GridsCell(cellNumber=i))
-        CellsBox[-1].NeighbourIdentification
+    CellsBox = [[grid.GridsCell(coordinateX=x, coordinateY=y) for x in range(Nx)] for y in range(Ny)]
+    return CellsBox
 
-Nx = 10
-Ny = 10
+Nx = 4
+Ny = 4
 
-CellsBox =[] # Массив объектов-ячеек
-initialization(Nx, Ny)
+timeBefore = time.time()
 
+CellBox =  initialization(Nx, Ny)
 
+timeAfter = time.time()
 
-print(len(CellsBox))
+print(f'\n координата х = {CellBox[2][1].coordinateX} '
+      f'\n координата у = {CellBox[2][1].coordinateY} ')
+
+print(timeAfter-timeBefore)
+
