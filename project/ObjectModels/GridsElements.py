@@ -11,16 +11,16 @@ class GridsCell:
     CellHeight - мощность ННТ в ячейке (м)
     """
 
-    beginningPressure = float()
-    beginningOil = float()    #начальные запасы нефти тыс.м3
-    CellSize = float()  #размер ребра ячейки
-    CellHeight = float()    #мощность ННТ в ячейке
-
+    beginningPressure = float(250)  #начальное пластовое давление (атм)
+    beginningFluid = float(200*(10 ** 3))    #начальные запасы жидкости м3
+    beginningOilSaturation = float(0.6) #доля нефти в жидкости
+    CellSize = float(100)  #размер ребра ячейки (м)
+    CellHeight = float(3)    #мощность ННТ в ячейке (м)
 
     def __init__(self, coordinateX = None, coordinateY = None):
         self.coordinateX = coordinateX
         self.coordinateY = coordinateY
-        self.layerPressure = {}  #пластовое давление в ячейке (атмосферы) на начало месяца
+        self.layerPressure = {}  #пластовое давление в ячейке (атмосферы) на конец месяца
         self.Qwest = []   #накопленный переток в ячейку слева
         self.Qnorth = []  #накопленный переток в ячейку сверху
         self.Qeast = []   #накопленный переток в ячейку справа
@@ -32,8 +32,7 @@ class GridsCell:
         self.WellPresence = [] #есть ли в ячейке скважина, если есть нужно хранить ссылку на объект скважины
         self.AccumulatedWaterInjection = []    #накопленная по ячейке закачка на текущий момент
         self.AccumulatedFluidProduction = [] #накопленная по ячейке добыча на текущий момент
-
-
+        self.OilSaturation = float()    #текущая нефтенасыщенность на конец месяца
 
     def NeighbourIdentification(self):
         """
@@ -44,7 +43,6 @@ class GridsCell:
         формат словаря {north : number , west :number ...}
         """
 
-        self.coordinateX = self.cellNumber
         pass
 
 
