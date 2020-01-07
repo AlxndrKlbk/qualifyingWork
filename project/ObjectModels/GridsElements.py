@@ -17,11 +17,10 @@ class GridsCell:
     CellSize = float(100)  #размер ребра ячейки (м)
     CellHeight = float(3)    #мощность ННТ в ячейке (м)
 
-    def __init__(self, coordinateX = None, coordinateY = None, neihgbours = None):
+    def __init__(self, Nx, Ny, coordinateX = None, coordinateY = None):
         self.coordinateX = coordinateX
         self.coordinateY = coordinateY
         self.layerPressure = {}  #пластовое давление в ячейке (атмосферы) на конец месяца
-        self.neighbours = neihgbours
         self.Qwest = []   #накопленный переток в ячейку слева
         self.Qnorth = []  #накопленный переток в ячейку сверху
         self.Qeast = []   #накопленный переток в ячейку справа
@@ -34,14 +33,23 @@ class GridsCell:
         self.AccumulatedWaterInjection = []    #накопленная по ячейке закачка на текущий момент
         self.AccumulatedFluidProduction = [] #накопленная по ячейке добыча на текущий момент
         self.OilSaturation = float()    #текущая нефтенасыщенность на конец месяца
+        self.neighbours = self.neighbour_identification(coordinateX, coordinateY, Nx, Ny)
 
-
-if __name__ == "__main__":
-    array_of_cells = []
-    for i in range(10):
-        array_of_cells.append(GridsCell(
-            cellNumber=i
-        ))
-
-
-    print(len(array_of_cells))
+    def neighbour_identification(self, x, y, Nx, Ny):
+        if x - 1 >= 0:
+            west_neighbour = {"coordinateX": x - 1, "coordinateY": y}
+        else:
+            west_neighbour = {"coordinateX": None, "coordinateY": None}
+        if x + 1 <= Nx - 1:
+            east_neighbour = {"coordinateX": x + 1, "coordinateY": y}
+        else:
+            east_neighbour = {"coordinateX": None, "coordinateY": None}
+        if y - 1 >= 0:
+            north_neighbour = {"coordinateX": x, "coordinateY": y - 1}
+        else:
+            north_neighbour = {"coordinateX": None, "coordinateY": None}
+        if y + 1 <= Ny - 1:
+            south_neighbour = {"coordinateX": x, "coordinateY": y + 1}
+        else:
+            south_neighbour = {"coordinateX": None, "coordinateY": None}
+        return {"west": west_neighbour, "north": north_neighbour, "east": east_neighbour, "south": south_neighbour}
