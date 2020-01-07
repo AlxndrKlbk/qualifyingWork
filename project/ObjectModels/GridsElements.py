@@ -17,10 +17,11 @@ class GridsCell:
     CellSize = float(100)  #размер ребра ячейки (м)
     CellHeight = float(3)    #мощность ННТ в ячейке (м)
 
-    def __init__(self, coordinateX = None, coordinateY = None):
+    def __init__(self, coordinateX = None, coordinateY = None, neihgbours = None):
         self.coordinateX = coordinateX
         self.coordinateY = coordinateY
         self.layerPressure = {}  #пластовое давление в ячейке (атмосферы) на конец месяца
+        self.neighbours = neihgbours
         self.Qwest = []   #накопленный переток в ячейку слева
         self.Qnorth = []  #накопленный переток в ячейку сверху
         self.Qeast = []   #накопленный переток в ячейку справа
@@ -33,17 +34,6 @@ class GridsCell:
         self.AccumulatedWaterInjection = []    #накопленная по ячейке закачка на текущий момент
         self.AccumulatedFluidProduction = [] #накопленная по ячейке добыча на текущий момент
         self.OilSaturation = float()    #текущая нефтенасыщенность на конец месяца
-
-    def NeighbourIdentification(self):
-        """
-        Эта функция должна определять соседние ячейки через координаты
-        ----------
-        записывает соседние ячейки в словарь каждого экземляра
-        класса GridCell
-        формат словаря {north : number , west :number ...}
-        """
-
-        pass
 
 
 if __name__ == "__main__":
