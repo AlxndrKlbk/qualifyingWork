@@ -27,22 +27,24 @@ class Grid:
 
             return neighbours
 
-        matrix = np.zeros((Ny, Nx), dtype=type(GridsElements.GridsCell))
-        for y in range(Ny):
-            for x in range(Nx):
-                neighbours = _neighbour_identification(x, y)
-                matrix[y, x] = GridsElements.GridsCell(neighbours=neighbours)
+        def _create_matrix():
+            matrix = np.zeros((Ny, Nx), dtype=type(GridsElements.GridsCell))
+            for y in range(Ny):
+                for x in range(Nx):
+                    neighbours = _neighbour_identification(x, y)
+                    matrix[y, x] = GridsElements.GridsCell(neighbours=neighbours)
 
-        for i in range(len(DesignVariant)):  # список кортежей-вариантов (y,x, назнеачение)
-            variant = DesignVariant[i]
-            x = variant[1]
-            y = variant[0]
-            precence = variant[2]
-            matrix[y, x].well_presence = GridsElements.GridsWell(destiny=precence,
-                                                                 coordinate_x=x,
-                                                                 coordinate_y=y,
-                                                                 well_number=i+1)
+            for i in range(len(DesignVariant)):  # список кортежей-вариантов (y,x, назнеачение)
+                variant = DesignVariant[i]
+                x = variant[1]
+                y = variant[0]
+                precence = variant[2]
+                matrix[y, x].well_presence = GridsElements.GridsWell(destiny=precence,
+                                                                     coordinate_x=x,
+                                                                     coordinate_y=y,
+                                                                     well_number=i+1)
+            return matrix
 
         self.Nx = Nx
         self.Ny = Ny
-        self.matrix = matrix
+        self.matrix = _create_matrix()
