@@ -17,21 +17,22 @@ class GridsCell:
     CellSize = 100.0  #размер ребра ячейки (м)
     CellHeight = 3.0   #мощность ННТ в ячейке (м)
 
-    def __init__(self, well_presence = None, neighbours=None):
-        self.layerPressure = {}  #пластовое давление в ячейке (атмосферы) на конец месяца
-        self.Qwest = []   #накопленный переток в ячейку слева
-        self.Qnorth = []  #накопленный переток в ячейку сверху
-        self.Qeast = []   #накопленный переток в ячейку справа
-        self.Qsouth = []  #накопленный переток в ячейку снизу
+    def __init__(self, well_presence = None, neighbours=None, cell_number=None):
+        self.layerPressure = {}  # пластовое давление в ячейке (атмосферы) на конец месяца
+        self.Qwest = []   # накопленный переток в ячейку слева
+        self.Qnorth = []  # накопленный переток в ячейку сверху
+        self.Qeast = []   # накопленный переток в ячейку справа
+        self.Qsouth = []  # накопленный переток в ячейку снизу
         self.QwestFict = float()  # переток в ячейку слева до схождения по погрешности
         self.QnorthFict = float()  # переток в ячейку сверху до схождения по погрешности
         self.QeastFict = float()  # переток в ячейку справа до схождения по погрешности
         self.QsouthFict = float()  # переток в ячейку снизу до схождения по погрешности
-        self.well_presence = well_presence #есть ли в ячейке скважина, если есть нужно хранить ссылку на объект скважины
+        self.well_presence = well_presence  # есть ли в ячейке скважина, если есть нужно хранить ссылку на объект скважины
         self.accumulated_water_injection = []  # накопленная по ячейке закачка на текущий момент
         self.accumulated_fluid_production = []  # накопленная по ячейке добыча на текущий момент
-        self.OilSaturation = float()    #текущая нефтенасыщенность на конец месяца
-        self.neighbours = neighbours
+        self.OilSaturation = float()    # текущая нефтенасыщенность на конец месяца
+        self.neighbours = neighbours  # словарь соседей
+        self.cell_number = cell_number
 
 
 class GridsWell:

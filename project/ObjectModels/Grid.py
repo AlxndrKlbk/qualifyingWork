@@ -14,8 +14,13 @@ class Grid:
         """
 
         def _neighbour_identification(x, y):
+            """This function define cell's neighbours
 
-            neighbours = {"west": None, "north": None, "east": None, "south": None}
+            :param x: cell's x coordinate
+            :param y: cell's y coordinate
+            :return: dict containing neighbours
+            """
+            neighbours = {"itself":  (y, x), "west": None, "north": None, "east": None, "south": None}
             if x != 0:
                 neighbours["west"] = (y, x - 1)
             if x != Nx - 1:
@@ -29,10 +34,12 @@ class Grid:
 
         def _create_matrix():
             matrix = np.zeros((Ny, Nx), dtype=type(GridsElements.GridsCell))
+            number = 0
             for y in range(Ny):
                 for x in range(Nx):
                     neighbours = _neighbour_identification(x, y)
-                    matrix[y, x] = GridsElements.GridsCell(neighbours=neighbours)
+                    matrix[y, x] = GridsElements.GridsCell(neighbours=neighbours, cell_number= number)
+                    number += 1
 
             for i in range(len(DesignVariant)):  # список кортежей-вариантов (y,x, назнеачение)
                 variant = DesignVariant[i]
