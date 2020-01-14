@@ -45,8 +45,8 @@ class Grid:
                 variant = DesignVariant[i]
                 x = variant[1]
                 y = variant[0]
-                precence = variant[2]
-                matrix[y, x].well_presence = GridsElements.GridsWell(destiny=precence,
+                well_type = variant[2]
+                matrix[y, x].well_presence = GridsElements.GridsWell(destiny=well_type,
                                                                      coordinate_x=x,
                                                                      coordinate_y=y,
                                                                      well_number=i+1)
