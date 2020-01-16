@@ -34,11 +34,11 @@ def _material_balance(x, y, a_matrix, b_matrix, scenario=None):
                 injection = well.water_injection(cell, step)
                 production = well.get_accumulated_water_production(step)
 
-        "# записываю давление в текущей ячейке, чтобы дальше удобно считать поток по соседям"
+        "# записываю давление в текущей ячейке в переменную, чтобы дальше удобно считать поток по соседям"
         cell_pressure = pressures_copy.pop("itself")  # cell_pressure давление в ячейке, для которой считается Матбаланс
         summary_flow = 0
-        for flow, pressure in pressures_copy.items():
-            summary_flow += cell.calculate_flow_water(flow, pressure, cell_pressure, CellsBox, step)
+        for flow_to, pressure in pressures_copy.items():
+            summary_flow += cell.calculate_flow_water(flow_to, pressure, cell_pressure, CellsBox, step)
         ini_water = Grid.GridsElements.GridsCell.beginningWater
         ce = Grid.GridsElements.GridsCell.ce
         # СПРОСИ У ДИМАСА, С КАКИМИ ЗНАКАМИ ПАРАМЕТРЫ ВХОДЯТ В УРАВНЕНИЕ!!!!!!!!!!!!!!
@@ -46,9 +46,47 @@ def _material_balance(x, y, a_matrix, b_matrix, scenario=None):
                                                                                    ini_water * ce)
         return MatBal
 
+    def _calculate_material_balance_oil(step, direction = None, coordinates = None):
+        """This function calculate material balance oil phase
+
+        :param step: moment of time
+        :param direction: if this parameter given, should take one pressure from last step
+        :param coordinates: index for neighbour cells
+        :return: material balance value
+        """
+        pressures_copy = copy.deepcopy(neighbours_pressure)
+
+        if direction:
+            x = coordinates[1]
+            y = coordinates[0]
+            pressures_copy[direction] = CellsBox.matrix[y, x].get_prev_pressure_oil(step)
+
+        "# если в ячейке есть скважина, проверяю ее назначение и пересчитываю накопленные параметры"
+        injection = 0
+        production = 0
+        if cell.well_presence:
+            well = cell.well_presence
+            pressure_well = cell.well_presence.well_pressure
+            if pressure_well < pressures_copy["itself"]:
+                production = well.oil_production(cell, step)
+            elif pressure_well >= pressures_copy["itself"]:
+                production = well.get_accumulated_oil_production(step)
+
+        "# записываю давление в текущей ячейке в переменную, чтобы дальше удобно считать поток по соседям"
+        cell_pressure = pressures_copy.pop("itself")  # cell_pressure давление в ячейке, для которой считается Матбаланс
+        summary_flow = 0
+        for flow, pressure in pressures_copy.items():
+            summary_flow += cell.calculate_flow_oil(flow, pressure, cell_pressure, CellsBox, step)
+        ini_oil = Grid.GridsElements.GridsCell.beginningOil
+        ce = Grid.GridsElements.GridsCell.ce
+
+        MatBal = Grid.GridsElements.GridsCell.beginningPressure - cell_pressure - ((production + injection - summary_flow)/
+                                                                                   ini_oil * ce)
+        return MatBal
+
     cell = CellsBox.matrix[y, x]
     neighbours_pressure = {"itself":  None, "west": None, "north": None, "east": None, "south": None}
-    "# давления из ячеек соседнейго окружения, если соседняя ячейка за контуром, то беру начальное пластовое"
+    "# давления из ячеек соседнего окружения, если соседняя ячейка за контуром, то беру начальное пластовое"
     for direction, coordinates in cell.neighbours.items():
         if coordinates and scenario == "water":
             neighbours_pressure[direction] = CellsBox.matrix[coordinates[0], coordinates[1]].get_pressure_water(step)
@@ -57,26 +95,34 @@ def _material_balance(x, y, a_matrix, b_matrix, scenario=None):
         else:  # если входим в это условие, то значит соседняя ячейка это аквифер
             neighbours_pressure[direction] = Grid.GridsElements.GridsCell.beginningPressure
 
+    "# заполнение матриц а, матрица в вписывается значение мб с текущими давлениями, чтобы после снова не считать "
     for direction, coordinates in cell.neighbours.items():
         for_which = cell.cell_number  # ячейка, для которой считаем мб
         if coordinates and scenario == "water":
             by_which = CellsBox.matrix[coordinates[0], coordinates[1]].cell_number  # ячейка, из которой берем приближение давления
             mb_current_pressure = _calculate_material_balance_water(step)  # пересчет мб с текущими давлениями
+            b_matrix_water[for_which] = -mb_current_pressure
             mb_dif_pressure = _calculate_material_balance_water(step, direction, coordinates) # пересчет мб с давлением прошлого шага
             delta_pressure = CellsBox.matrix[coordinates[0], coordinates[1]].delta_pressure_water(step)
             a_matrix[for_which, by_which] = (mb_current_pressure - mb_dif_pressure)/delta_pressure# считаю коэффициент a
         elif coordinates and scenario == "oil":
+            # if direction == "east":
+            #     pass
             by_which = CellsBox.matrix[coordinates[0], coordinates[1]].cell_number  # ячейка, из которой берем приближение давления
-            mb_current_pressure = _calculate_material_balance_water(step)  # пересчет мб с текущими давлениями
-            mb_dif_pressure = _calculate_material_balance_water(step, direction, coordinates)  # пересчет мб с давлением прошлого шага
-            delta_pressure = CellsBox.matrix[coordinates[0], coordinates[1]].delta_pressure_water(step)
+            mb_current_pressure = _calculate_material_balance_oil(step)  # пересчет мб с текущими давлениями
+            b_matrix_oil[for_which] = -mb_current_pressure
+            mb_dif_pressure = _calculate_material_balance_oil(step, direction, coordinates)  # пересчет мб с давлением прошлого шага
+            delta_pressure = CellsBox.matrix[coordinates[0], coordinates[1]].delta_pressure_oil(step)
             a_matrix[for_which, by_which] = (mb_current_pressure - mb_dif_pressure) / delta_pressure  # считаю коэффициент a
 
 
+
+
 "# Выше матбаланс, готовь акваланг"
-Nx = 100
-Ny = 100
-DesignVariant = [(0, 0, "inject"), (Ny-1, Nx-1, "extract")]
+Nx = 10
+Ny = 10
+#DesignVariant = [(0, 0, "inject"), (Ny-1, Nx-1, "extract")]
+DesignVariant = [(0, 0, "extract")]
 
 
 timeBefore = time.time()
@@ -98,13 +144,26 @@ for step in range(calculation_steps):
         "# прохожусь по ячейкам, передаю координаты текущей ячейки в матбаланс"
         for y in range(Ny):
             for x in range(Nx):
-                '#_material_balance(x, y, a_matrix_oil, b_matrix_oil, scenario="oil")'
+                _material_balance(x, y, a_matrix_oil, b_matrix_oil, scenario="oil")
                 _material_balance(x, y, a_matrix_water, b_matrix_water, scenario="water")
+
+        for for_which in range(Nx*Ny):
+            for by_which in range(Nx*Ny):
+                water_pressure_in_by_which = CellsBox.cells_numbers[by_which +1].get_pressure_water(step)
+                oil_pressure_in_by_which = CellsBox.cells_numbers[by_which + 1].get_pressure_oil(step)
+
+                b_matrix_water[for_which] += a_matrix_water[for_which, by_which] * water_pressure_in_by_which
+                b_matrix_oil[for_which] += a_matrix_oil[for_which, by_which] * oil_pressure_in_by_which
 
         # for i in range(Nx*Ny):
         #     for j in range(Nx*Ny):
-        #         print(a_matrix_oil[i, j], end=" ")
+        #         print(a_matrix_water[i, j], end=" ")
         #     print("\n")
+        #
+        # print(f"{'-'*20}")
+        #
+        # for i in range(Nx*Ny):
+        #     print(b_matrix_water[i])
 
         pressure_accuracy = False
         if not pressure_accuracy:

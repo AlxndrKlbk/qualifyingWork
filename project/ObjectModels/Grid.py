@@ -32,7 +32,7 @@ class Grid:
 
             return neighbours
 
-        def _create_matrix():
+        def _create_matrix(self):
             matrix = np.zeros((Ny, Nx), dtype=type(GridsElements.GridsCell))
             number = 0
             for y in range(Ny):
@@ -40,6 +40,7 @@ class Grid:
                     neighbours = _neighbour_identification(x, y)
                     matrix[y, x] = GridsElements.GridsCell(neighbours=neighbours, cell_number= number)
                     number += 1
+                    self.cells_numbers[number] = matrix[y, x]
 
             for i in range(len(DesignVariant)):  # список кортежей-вариантов (y,x, назнеачение)
                 variant = DesignVariant[i]
@@ -51,7 +52,7 @@ class Grid:
                                                                      coordinate_y=y,
                                                                      well_number=i+1)
             return matrix
-
+        self.cells_numbers = {}
         self.Nx = Nx
         self.Ny = Ny
-        self.matrix = _create_matrix()
+        self.matrix = _create_matrix(self)

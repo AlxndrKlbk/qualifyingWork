@@ -26,6 +26,8 @@ class GridsCell:
     def __init__(self, well_presence = None, neighbours=None, cell_number=None):
         self.layer_pressure_water = {}  # пластовое давление в ячейке (атмосферы) на конец месяца
         self.layer_pressure_oil = {}
+        self.layer_pressure_water_prev = GridsCell.beginningPressure + 1  # пластовое давление в ячейке (атмосферы) на конец месяца
+        self.layer_pressure_oil_prev = GridsCell.beginningPressure + 1
         self.water_flow_accumulated = {"west": None, "north": None, "east": None, "south": None}  # словарь перетоков, по ключу хранится накопленный по данному направлению переток
         self.water_flow_fict = {"west": None, "north": None, "east": None, "south": None}  # словарь фиктивных перетоков на i шаге, после схождения эти значения суммируются в flow_accumulated
         self.oil_flow_accumulated = {"west": None, "north": None, "east": None, "south": None}
@@ -37,6 +39,8 @@ class GridsCell:
         self.absolute_permeability = GridsCell.absolute_permeability
         self.oil_fund = GridsCell.beginningOil
         self.water_fund = GridsCell.beginningWater
+        self.layer_pressure_water[0] = GridsCell.beginningPressure
+        self.layer_pressure_oil[0] = GridsCell.beginningPressure
 
     def get_accumulated_water_flow(self, step, direction):
         if step == 0:
@@ -51,57 +55,42 @@ class GridsCell:
             return self.oil_flow_accumulated[direction]
 
     def delta_pressure_water(self, step):
-        if step == 0:
-            return -1  # давление на -1 шаге на 1 атм больше, чем beginningPressure
-        else:
-            return self.layer_pressure_water[step] - self.layer_pressure_water[step - 1]
+        return self.layer_pressure_water[step] - self.layer_pressure_water_prev
 
     def get_pressure_water(self, step):
-        if step == 0:
-            return GridsCell.beginningPressure
-        else:
-            return self.layer_pressure_water[step - 1]
+        return self.layer_pressure_water[step]
 
     def get_prev_pressure_water(self, step):
-        if step == 0:
-            return GridsCell.beginningPressure + 1
-        else:
-            return self.layer_pressure_water[step - 1]
+        return self.layer_pressure_water_prev
 
     def delta_pressure_oil(self, step):
-        if step == 0:
-            return -1  # давление на -1 шаге на 1 атм больше, чем beginningPressure
-        else:
-            return self.layer_pressure_oil[step] - self.layer_pressure_oil[step - 1]
+        return self.layer_pressure_oil[step] - self.layer_pressure_oil_prev
 
     def get_pressure_oil(self, step):
-        if step == 0:
-            return GridsCell.beginningPressure
-        else:
-            return self.layer_pressure_oil[step - 1]
+        return self.layer_pressure_oil[step]
 
     def get_prev_pressure_oil(self, step):
-        if step == 0:
-            return GridsCell.beginningPressure + 1
-        else:
-            return self.layer_pressure_oil[step - 1]
+        return self.layer_pressure_oil_prev
 
     def get_water_permeability(self):
         Sw = self.water_fund / self.beginningFluid
-        if Sw < 0.272:
-            Sw = 0.272
-        elif Sw > 0.572:
-            Sw = 0.572
-        RPP = (14.358*(Sw**3) - 15.464*(Sw**2) + 5.5374*Sw - 0.6512)  # relative phase permeability
+        if Sw < 0:
+            Sw = 0
+        elif Sw > 1:
+            Sw = 1
+        RPP = 0.3*Sw
+        #RPP = (14.358*(Sw**3) - 15.464*(Sw**2) + 5.5374*Sw - 0.6512)  # relative phase permeability
         return self.absolute_permeability * RPP
 
     def get_oil_permeability(self):
-        So = self.oil_fund / self.beginningFluid
-        if So < 0.428 :
-            So = 0.428
-        elif So > 0.728:
-            So = 0.728
-        RPP = (440.02*(So**4) - 859.22*(So**3) + 628.34*(So**2) - 204.27*So + 24.955)  # relative phase permeability
+        Sw = self.water_fund / self.beginningFluid
+        if Sw < 0 :
+            Sw = 0
+        elif Sw > 1:
+            Sw = 1
+
+        RPP = 0.5357*(Sw**4) - 2.1071 * (Sw**3) + 3.4232*(Sw**2) - 2.8518*Sw + 1
+        #RPP = (440.02*(Sw**4) - 859.22*(Sw**3) + 628.34*(Sw**2) - 204.27*So + 24.955)  # relative phase permeability
         return self.absolute_permeability * RPP
 
     def calculate_flow_water(self, direction, another_cell_pressure, this_cell_pressure, grid, step):
@@ -119,9 +108,10 @@ class GridsCell:
             neighbour_x = self.neighbours[direction][1]
             neighbour_y = self.neighbours[direction][0]
             permeability = grid.matrix[neighbour_y, neighbour_x].get_water_permeability()
+        contact_space = GridsCell.CellHeight* GridsCell.CellSize
         delta_pressure = another_cell_pressure - this_cell_pressure
         acc_flow = self.get_accumulated_water_flow(step, direction)  # накопленный по направлению поток
-        self.water_flow_fict[direction] = ((permeability * GridsCell.CellHeight * delta_pressure)
+        self.water_flow_fict[direction] = ((permeability * contact_space * delta_pressure)
                                            / (GridsCell.mu_water * GridsCell.CellSize)) * 0.03 + acc_flow
         return self.water_flow_fict[direction]
 
@@ -136,15 +126,19 @@ class GridsCell:
         :return: fixes in entity and return value of flow in thousand meters**3
         """
         permeability = self.get_oil_permeability()
-        if self.neighbours[direction] and (this_cell_pressure >= another_cell_pressure):
-            neighbour_x = self.neighbours[direction][1]
-            neighbour_y = self.neighbours[direction][0]
-            permeability = grid.matrix[neighbour_y, neighbour_x].get_oil_permeability()
-        delta_pressure = another_cell_pressure - this_cell_pressure
-        acc_flow = self.get_accumulated_oil_flow(step, direction)  # накопленный по направлению поток
-        self.oil_flow_fict[direction] = ((permeability * GridsCell.CellHeight * delta_pressure)
-                                           / (GridsCell.mu_oil * GridsCell.CellSize)) * 0.03 + acc_flow
-        return self.oil_flow_fict[direction]
+        if self.neighbours[direction]:
+            if self.neighbours[direction] and (this_cell_pressure >= another_cell_pressure):
+                neighbour_x = self.neighbours[direction][1]
+                neighbour_y = self.neighbours[direction][0]
+                permeability = grid.matrix[neighbour_y, neighbour_x].get_oil_permeability()
+            contact_space = GridsCell.CellHeight * GridsCell.CellSize
+            delta_pressure = another_cell_pressure - this_cell_pressure
+            acc_flow = self.get_accumulated_oil_flow(step, direction)  # накопленный по направлению поток
+            self.oil_flow_fict[direction] = ((permeability * contact_space * delta_pressure)
+                                                / (GridsCell.mu_oil * GridsCell.CellSize)) * 0.03 + acc_flow
+            return self.oil_flow_fict[direction]
+        else:
+            return 0
 
 
 class GridsWell:
