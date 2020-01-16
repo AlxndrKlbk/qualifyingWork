@@ -109,7 +109,7 @@ class GridsCell:
             neighbour_y = self.neighbours[direction][0]
             permeability = grid.matrix[neighbour_y, neighbour_x].get_water_permeability()
         contact_space = GridsCell.CellHeight* GridsCell.CellSize
-        delta_pressure = another_cell_pressure - this_cell_pressure
+        delta_pressure = this_cell_pressure - another_cell_pressure
         acc_flow = self.get_accumulated_water_flow(step, direction)  # накопленный по направлению поток
         self.water_flow_fict[direction] = ((permeability * contact_space * delta_pressure)
                                            / (GridsCell.mu_water * GridsCell.CellSize)) * 0.03 + acc_flow
@@ -132,13 +132,42 @@ class GridsCell:
                 neighbour_y = self.neighbours[direction][0]
                 permeability = grid.matrix[neighbour_y, neighbour_x].get_oil_permeability()
             contact_space = GridsCell.CellHeight * GridsCell.CellSize
-            delta_pressure = another_cell_pressure - this_cell_pressure
+            delta_pressure = this_cell_pressure - another_cell_pressure
             acc_flow = self.get_accumulated_oil_flow(step, direction)  # накопленный по направлению поток
             self.oil_flow_fict[direction] = ((permeability * contact_space * delta_pressure)
                                                 / (GridsCell.mu_oil * GridsCell.CellSize)) * 0.03 + acc_flow
             return self.oil_flow_fict[direction]
         else:
             return 0
+
+    def new_approach(self, new_water_pres, new_oil_pres, step, accuracy): #если accuracy True, то следующий шаг по времени, в противном случае только замена давлений
+        if not accuracy:
+            self.layer_pressure_oil_prev = self.layer_pressure_oil[step]
+            self.layer_pressure_water_prev = self.layer_pressure_water[step]
+            self.layer_pressure_oil[step] = new_oil_pres
+            self.layer_pressure_water[step] = new_water_pres
+        else:
+            self.layer_pressure_oil_prev = new_oil_pres + 1
+            self.layer_pressure_water_prev = new_water_pres + 1
+            self.layer_pressure_oil[step] = new_oil_pres
+            self.layer_pressure_water[step] = new_water_pres
+
+            directions = self.water_flow_accumulated.keys()
+            water_summ = 0
+            oil_summ = 0
+            for direction in directions:
+                self.water_flow_accumulated[direction] = self.water_flow_fict[direction]
+                water_summ = self.water_flow_fict[direction]
+                self.oil_flow_accumulated[direction] = self.oil_flow_fict[direction]
+                oil_summ = self.oil_flow_fict[direction]
+            if self.well_presence:
+                well = self.well_presence
+                well.new_approach(step)   # этим действием вызывается запись накопленных показателей по скважине
+                oil_summ += well.fict_oil_production
+                water_summ += well.fict_water_production + well.fict_water_injection
+
+            self.oil_fund += oil_summ
+            self.water_fund += water_summ
 
 
 class GridsWell:
@@ -155,9 +184,9 @@ class GridsWell:
         self.accumulated_water_injection = {}  # накопленная скважиной закачка на текущий момент
         self.accumulated_water_production = {}  # накопленная скважиной добыча на текущий момент
         self.accumulated_oil_production = {}
-        self.fict_water_injection = None
-        self.fict_water_production = None
-        self.fict_oil_production = None
+        self.fict_water_injection = 0
+        self.fict_water_production = 0
+        self.fict_oil_production = 0
 
         if self.destiny == "inject":
             self.well_pressure = GridsCell.beginningPressure + 50
@@ -223,3 +252,14 @@ class GridsWell:
                                     (18.41 * GridsCell.mu_oil * (math.log((self.Rb/self.Rw)) - 0.75 + self.Skin))*0.03
                                     + self.get_accumulated_oil_production(step))
         return self.fict_oil_production
+
+    def new_approach(self, step):
+        """ this function fix well job for month
+
+        :param step: calculation month
+        :return: nothing
+        """
+        self.accumulated_water_production[step] = self.fict_water_production
+        self.accumulated_water_injection = self.fict_water_injection
+        self.accumulated_oil_production[step] = self.fict_oil_production
+

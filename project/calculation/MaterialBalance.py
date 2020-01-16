@@ -42,7 +42,7 @@ def _material_balance(x, y, a_matrix, b_matrix, scenario=None):
         ini_water = Grid.GridsElements.GridsCell.beginningWater
         ce = Grid.GridsElements.GridsCell.ce
         # СПРОСИ У ДИМАСА, С КАКИМИ ЗНАКАМИ ПАРАМЕТРЫ ВХОДЯТ В УРАВНЕНИЕ!!!!!!!!!!!!!!
-        MatBal = Grid.GridsElements.GridsCell.beginningPressure - cell_pressure - ((production + injection - summary_flow)/
+        MatBal = Grid.GridsElements.GridsCell.beginningPressure - cell_pressure - ((production + injection + summary_flow)/
                                                                                    ini_water * ce)
         return MatBal
 
@@ -80,7 +80,7 @@ def _material_balance(x, y, a_matrix, b_matrix, scenario=None):
         ini_oil = Grid.GridsElements.GridsCell.beginningOil
         ce = Grid.GridsElements.GridsCell.ce
 
-        MatBal = Grid.GridsElements.GridsCell.beginningPressure - cell_pressure - ((production + injection - summary_flow)/
+        MatBal = Grid.GridsElements.GridsCell.beginningPressure - cell_pressure - ((production + injection + summary_flow)/
                                                                                    ini_oil * ce)
         return MatBal
 
@@ -122,7 +122,7 @@ def _material_balance(x, y, a_matrix, b_matrix, scenario=None):
 Nx = 10
 Ny = 10
 #DesignVariant = [(0, 0, "inject"), (Ny-1, Nx-1, "extract")]
-DesignVariant = [(0, 0, "extract")]
+DesignVariant = [(int(Ny/2), int(Nx/2), "extract")]
 
 
 timeBefore = time.time()
@@ -155,21 +155,24 @@ for step in range(calculation_steps):
                 b_matrix_water[for_which] += a_matrix_water[for_which, by_which] * water_pressure_in_by_which
                 b_matrix_oil[for_which] += a_matrix_oil[for_which, by_which] * oil_pressure_in_by_which
 
-        # for i in range(Nx*Ny):
-        #     for j in range(Nx*Ny):
-        #         print(a_matrix_water[i, j], end=" ")
-        #     print("\n")
-        #
-        # print(f"{'-'*20}")
-        #
-        # for i in range(Nx*Ny):
-        #     print(b_matrix_water[i])
+        pressure_water_roots = np.linalg.solve(a_matrix_water, b_matrix_water)
+        pressure_oil_roots = np.linalg.solve(a_matrix_oil, b_matrix_oil)
 
-        pressure_accuracy = False
-        if not pressure_accuracy:
+        pressure_accuracy = True
+        for cell in range(Nx*Ny):
+            water_accuracy = (abs(CellsBox.cells_numbers[cell].get_pressure_water(step) - pressure_water_roots[cell]) > 0.001)
+            oil_accuracy = (abs(CellsBox.cells_numbers[cell].get_pressure_oil(step) - pressure_oil_roots[cell]) > 0.001)
+            if water_accuracy or oil_accuracy:
+                pressure_accuracy = False
+                break
+
+        for cell in range(Nx * Ny):
+            CellsBox.cells_numbers[cell].new_approach(pressure_water_roots[cell], pressure_oil_roots[cell], step, pressure_accuracy)
+
+        if pressure_accuracy:
             break
 
-    pass
+
 
 "#поля для перетоков у объекта скважина сделать в виде словарей {направление: [массив значений по месяцам]}"
 print(f'тип хранилища ячеек {type(CellsBox)}')
