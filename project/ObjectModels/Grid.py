@@ -39,8 +39,8 @@ class Grid:
                 for x in range(Nx):
                     neighbours = _neighbour_identification(x, y)
                     matrix[y, x] = GridsElements.GridsCell(neighbours=neighbours, cell_number= number)
-                    number += 1
                     self.cells_numbers[number] = matrix[y, x]
+                    number += 1
 
             for i in range(len(DesignVariant)):  # список кортежей-вариантов (y,x, назнеачение)
                 variant = DesignVariant[i]
