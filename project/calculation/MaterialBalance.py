@@ -5,7 +5,7 @@ import time
 import copy
 
 
-def MB_calculation(Nx, Ny, DesignVariant):
+def MB_calculation(Nx, Ny, DesignVariant, calculation_steps):
     def _material_balance(x, y, a_matrix, b_matrix, scenario=None):
         def _calculate_material_balance_water(step, direction = None, coordinates = None):
             """This function calculate material balance water phase
@@ -128,13 +128,8 @@ def MB_calculation(Nx, Ny, DesignVariant):
     # DesignVariant = [(int(Ny/2), int(Nx/2), "extract")]
 
     timeBefore = time.time()
-
     CellsBox = Grid.Grid(Nx, Ny, DesignVariant)
-
     timeAfter = time.time()
-
-
-    calculation_steps = int(input("введите число расчетных месяцев:"))  # расчетный шаг в месяцах
 
     a_matrix_oil = np.zeros((Ny * Nx, Nx * Ny), dtype="float32")  # a_matrix{y,x] где у - номер ячейки, для которой считаем производную, x - по которой
     b_matrix_oil = np.zeros((Ny * Nx), dtype="float32")  # один b для каждой ячейки
@@ -178,13 +173,13 @@ def MB_calculation(Nx, Ny, DesignVariant):
             print(do_iter)
 
     "# давления на последний месяц"
-    print(f"давление по воде")
+    print(f"давление по нефти")
     for i in range(Ny):
         for j in range(Nx):
             print(CellsBox.matrix[i, j].layer_pressure_oil[step], end="|")
         print(f"\n{'-'*Nx*Nx}")
 
-    print(f"давление по нефти")
+    print(f"давление по воде")
     for i in range(Ny):
         for j in range(Nx):
             print(CellsBox.matrix[i, j].layer_pressure_water[step], end="|")

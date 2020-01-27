@@ -51,7 +51,9 @@ class Grid:
                                                                      coordinate_x=x,
                                                                      coordinate_y=y,
                                                                      well_number=i+1)
+                self.wells_list.append(matrix[y, x].well_presence)
             return matrix
+        self.wells_list = []
         self.cells_numbers = {}
         self.Nx = Nx
         self.Ny = Ny
