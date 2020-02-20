@@ -140,7 +140,7 @@ class GridsCell:
         else:
             return 0
 
-    def new_approach(self, new_water_pres, new_oil_pres, step, accuracy): #если accuracy True, то следующий шаг по времени, в противном случае только замена давлений
+    def new_approach(self, new_water_pres, new_oil_pres, step, accuracy):  # если accuracy True, то следующий шаг по времени, в противном случае только замена давлений
         if not accuracy:
             solved_water = (abs(self.layer_pressure_water[step] - new_water_pres) < 0.1)
             solved_oil = (abs(self.layer_pressure_oil[step] - new_oil_pres) < 0.1)
