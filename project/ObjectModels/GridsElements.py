@@ -13,7 +13,9 @@ class GridsCell:
     ce = 0.0000149  # сжимаемость системы, аналитическая функция есть в курсаче (1/атм)
     mu_oil = 10  # сП
     mu_water = 1  # сП
+    mu_fluid = 5.5  # посмотреть как пересчитывать в зависимости от содержания компонент
     porosity = 0.4
+    Boil = 1.126
     beginningPressure = 250.0  #начальное пластовое давление (атм)
     beginningOilSaturation = 0.6 #доля нефти в жидкости
     CellSize = 100.0  #размер ребра ячейки (м)
@@ -25,13 +27,17 @@ class GridsCell:
 
     def __init__(self, well_presence = None, neighbours=None, cell_number=None):
         self.layer_pressure_water = {}  # пластовое давление в ячейке (атмосферы) на конец месяца
+        self.layer_pressure_fluid = {}
         self.layer_pressure_oil = {}
         self.layer_pressure_water_prev = GridsCell.beginningPressure + 1  # пластовое давление в ячейке (атмосферы) на конец месяца
         self.layer_pressure_oil_prev = GridsCell.beginningPressure + 1
+        self.layer_pressure_fluid_prev = GridsCell.beginningPressure + 1
         self.water_flow_accumulated = {"west": 0, "north": 0, "east": 0, "south": 0}  # словарь перетоков, по ключу хранится накопленный по данному направлению переток
         self.water_flow_fict = {"west": 0, "north": 0, "east": 0, "south": 0}  # словарь фиктивных перетоков на i шаге, после схождения эти значения суммируются в flow_accumulated
         self.oil_flow_accumulated = {"west": 0, "north": 0, "east": 0, "south": 0}
         self.oil_flow_fict = {"west": 0, "north": 0, "east": 0, "south": 0}
+        self.fluid_flow_accumulated = {"west": 0, "north": 0, "east": 0, "south": 0}
+        self.fluid_flow_fict = {"west": 0, "north": 0, "east": 0, "south": 0}
         self.well_presence = well_presence  # есть ли в ячейке скважина, если есть нужно хранить ссылку на объект скважины
         self.oil_saturation = float()    # текущая нефтенасыщенность на конец месяца
         self.neighbours = neighbours  # словарь соседей
@@ -39,29 +45,37 @@ class GridsCell:
         self.absolute_permeability = GridsCell.absolute_permeability
         self.oil_fund = GridsCell.beginningOil
         self.water_fund = GridsCell.beginningWater
+        self.fluid_fund = GridsCell.beginningFluid
         self.layer_pressure_water[0] = GridsCell.beginningPressure
         self.layer_pressure_oil[0] = GridsCell.beginningPressure
+        self.layer_pressure_fluid[0] = GridsCell.beginningPressure
+
+    def get_accumulated_fluid_flow(self, step, direction):
+        if step == 0:
+            return 0
+        else:
+            return self.fluid_flow_accumulated[direction]
 
     def get_accumulated_water_flow(self, step, direction):
         if step == 0:
-            return 0  # давление на -1 шаге на 1 атм больше, чем beginningPressure
+            return 0
         else:
             return self.water_flow_accumulated[direction]
 
     def get_accumulated_oil_flow(self, step, direction):
         if step == 0:
-            return 0  # давление на -1 шаге на 1 атм больше, чем beginningPressure
+            return 0
         else:
             return self.oil_flow_accumulated[direction]
 
-    def delta_pressure_water(self, step):
-        return self.layer_pressure_water[step] - self.layer_pressure_water_prev
+    def delta_pressure_fluid(self, step):
+        return self.layer_pressure_fluid[step] - self.layer_pressure_fluid_prev
 
-    def get_pressure_water(self, step):
-        return self.layer_pressure_water[step]
+    def get_pressure_fluid(self, step):
+        return self.layer_pressure_fluid[step]
 
-    def get_prev_pressure_water(self, step):
-        return self.layer_pressure_water_prev
+    def get_prev_pressure_fluid(self, step):
+        return self.layer_pressure_fluid_prev
 
     def delta_pressure_oil(self, step):
         return self.layer_pressure_oil[step] - self.layer_pressure_oil_prev
@@ -71,6 +85,9 @@ class GridsCell:
 
     def get_prev_pressure_oil(self, step):
         return self.layer_pressure_oil_prev
+
+    def get_fluid_permeability(self):
+        return self.absolute_permeability
 
     def get_water_permeability(self):
         Sw = self.water_fund / self.beginningFluid
@@ -93,8 +110,34 @@ class GridsCell:
         #RPP = (440.02*(Sw**4) - 859.22*(Sw**3) + 628.34*(Sw**2) - 204.27*So + 24.955)  # relative phase permeability
         return self.absolute_permeability * RPP
 
+    def save_pressures_oil(self, new_oil_press, step):
+        self.layer_pressure_oil_prev = self.layer_pressure_oil[step]
+        self.layer_pressure_oil[step + 1] = new_oil_press
+
+    def calculate_flow_fluid(self, direction, another_cell_pressure, this_cell_pressure, grid, step):
+        """This function calculate fluid flow
+
+        :param direction: flow direction (west, north, east, south)
+        :param another_cell_pressure: pressure in that direction
+        :param this_cell_pressure: pressure in this cell
+        :param grid: numeric field, given for taking pressure in another cell
+        :param step: calculation step (month)
+        :return: fixes in entity and return value of flow in thousand meters**3
+        """
+        permeability = self.get_fluid_permeability()
+        if self.neighbours[direction] and (this_cell_pressure >= another_cell_pressure):
+            neighbour_x = self.neighbours[direction][1]
+            neighbour_y = self.neighbours[direction][0]
+            permeability = grid.matrix[neighbour_y, neighbour_x].get_fluid_permeability()
+        contact_space = GridsCell.CellHeight * 1.5  # GridsCell.CellSize
+        delta_pressure = this_cell_pressure - another_cell_pressure
+        acc_flow = self.get_accumulated_fluid_flow(step, direction)  # накопленный по направлению поток
+        self.fluid_flow_fict[direction] = ((permeability * contact_space * delta_pressure)
+                                           / (GridsCell.mu_fluid * GridsCell.CellSize)) * 0.03 + acc_flow
+        return self.fluid_flow_fict[direction]
+    
     def calculate_flow_water(self, direction, another_cell_pressure, this_cell_pressure, grid, step):
-        """This function calculate water flow and use upstream permeability
+        """This function calculate water flow using upstream permeability
 
         :param direction: flow direction (west, north, east, south)
         :param another_cell_pressure: pressure in that direction
@@ -110,13 +153,12 @@ class GridsCell:
             permeability = grid.matrix[neighbour_y, neighbour_x].get_water_permeability()
         contact_space = GridsCell.CellHeight * 1.5  # GridsCell.CellSize
         delta_pressure = this_cell_pressure - another_cell_pressure
-        acc_flow = self.get_accumulated_water_flow(step, direction)  # накопленный по направлению поток
         self.water_flow_fict[direction] = ((permeability * contact_space * delta_pressure)
-                                           / (GridsCell.mu_water * GridsCell.CellSize)) * 0.03 + acc_flow
+                                           / (GridsCell.mu_water * GridsCell.CellSize)) * 0.03
         return self.water_flow_fict[direction]
 
     def calculate_flow_oil(self, direction, another_cell_pressure, this_cell_pressure, grid, step):
-        """This function calculate oil flow and use upstream permeability
+        """This function calculate oil flow using upstream permeability
 
         :param direction: flow direction (west, north, east, south)
         :param another_cell_pressure: pressure in that direction
@@ -133,46 +175,32 @@ class GridsCell:
                 permeability = grid.matrix[neighbour_y, neighbour_x].get_oil_permeability()
             contact_space = GridsCell.CellHeight * 1.5  # GridsCell.CellSize
             delta_pressure = this_cell_pressure - another_cell_pressure
-            acc_flow = self.get_accumulated_oil_flow(step, direction)  # накопленный по направлению поток
             self.oil_flow_fict[direction] = ((permeability * contact_space * delta_pressure)
-                                                / (GridsCell.mu_oil * GridsCell.CellSize)) * 0.03 + acc_flow
+                                                / (GridsCell.mu_oil * GridsCell.CellSize)) * 0.03 # 0.3 => * 30 дней / 1000
             return self.oil_flow_fict[direction]
         else:
             return 0
 
-    def new_approach(self, new_water_pres, new_oil_pres, step, accuracy):  # если accuracy True, то следующий шаг по времени, в противном случае только замена давлений
+    def new_approach(self, new_fluid_pres, step, accuracy):  # если accuracy True, то следующий шаг по времени, в противном случае только замена давлений
         if not accuracy:
-            solved_water = (abs(self.layer_pressure_water[step] - new_water_pres) < 0.1)
-            solved_oil = (abs(self.layer_pressure_oil[step] - new_oil_pres) < 0.1)
-            if not solved_water:
-                self.layer_pressure_water_prev = self.layer_pressure_water[step]
-                self.layer_pressure_water[step] = new_water_pres
-            if not solved_oil:
-                self.layer_pressure_oil_prev = self.layer_pressure_oil[step]
-                self.layer_pressure_oil[step] = new_oil_pres
+            self.layer_pressure_fluid_prev = self.layer_pressure_fluid[step]
+            self.layer_pressure_fluid[step] = new_fluid_pres
 
         else:
-            self.layer_pressure_oil_prev = new_oil_pres + 1
-            self.layer_pressure_water_prev = new_water_pres + 1
-            self.layer_pressure_oil[step + 1] = new_oil_pres
-            self.layer_pressure_water[step + 1] = new_water_pres
+            self.layer_pressure_fluid_prev = new_fluid_pres + 1
+            self.layer_pressure_fluid[step + 1] = new_fluid_pres
 
-            directions = self.water_flow_accumulated.keys()
-            water_summ = 0
-            oil_summ = 0
+            directions = self.fluid_flow_accumulated.keys()
+            fluid_summ = 0
+
             for direction in directions:
-                self.water_flow_accumulated[direction] = self.water_flow_fict[direction]
-                water_summ = self.water_flow_fict[direction]
-                self.oil_flow_accumulated[direction] = self.oil_flow_fict[direction]
-                oil_summ = self.oil_flow_fict[direction]
+                self.fluid_flow_accumulated[direction] = self.fluid_flow_fict[direction]
             if self.well_presence:
                 well = self.well_presence
                 well.new_approach(step)   # этим действием вызывается запись накопленных показателей по скважине
-                oil_summ += well.fict_oil_production
-                water_summ += well.fict_water_production + well.fict_water_injection
+                fluid_summ += well.fict_water_production + well.fict_water_injection
 
-            self.oil_fund -= oil_summ
-            self.water_fund -= water_summ
+            self.fluid_fund -= fluid_summ
 
 
 class GridsWell:
@@ -188,9 +216,11 @@ class GridsWell:
         self.coordinate_y = coordinate_y
         self.accumulated_water_injection = {}  # накопленная скважиной закачка на текущий момент
         self.accumulated_water_production = {}  # накопленная скважиной добыча на текущий момент
+        self.accumulated_fluid_production = {}
         self.accumulated_oil_production = {}
         self.fict_water_injection = 0
         self.fict_water_production = 0
+        self.fict_fluid_production = 0
         self.fict_oil_production = 0
 
         if self.destiny == "inject":
@@ -209,6 +239,12 @@ class GridsWell:
             return 0
         else:
             return self.accumulated_water_production[step-1]
+
+    def get_accumulated_fluid_production(self, step):
+        if step == 0:
+            return 0
+        else:
+            return self.accumulated_fluid_production[step-1]
 
     def get_accumulated_oil_production(self, step):
         if step == 0:
@@ -243,6 +279,20 @@ class GridsWell:
                                       (18.41 * GridsCell.mu_water * (math.log((self.Rb/self.Rw)) - 0.75 + self.Skin))*0.03
                                       + self.get_accumulated_water_production(step))
         return self.fict_water_production
+    
+    def fluid_production(self, cell, step):
+        """This function return accumulated fluid production considering current mouth production
+
+        :param cell: cell entity, which contain this well
+        :param step: current month
+        :return: fictitious fluid production
+        """
+        layer_pressure = cell.get_pressure_fluid(step)
+        delta_pressure = layer_pressure - self.well_pressure
+        self.fict_fluid_production = ((cell.get_fluid_permeability() * GridsCell.CellHeight * delta_pressure)/
+                                      (18.41 * GridsCell.mu_fluid * (math.log((self.Rb/self.Rw)) - 0.75 + self.Skin))*0.03
+                                      + self.get_accumulated_fluid_production(step))
+        return self.fict_fluid_production
 
     def oil_production(self, cell, step):
         """This function return accumulated oil production considering current mouth production
@@ -264,7 +314,9 @@ class GridsWell:
         :param step: calculation month
         :return: nothing
         """
-        self.accumulated_water_production[step] = self.fict_water_production
+        self.accumulated_fluid_production[step] = self.fict_fluid_production
         self.accumulated_water_injection[step] = self.fict_water_injection
-        self.accumulated_oil_production[step] = self.fict_oil_production
+
+    def save_production(self, step, production):
+        self.accumulated_oil_production[step] = production
 

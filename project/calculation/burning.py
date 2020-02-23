@@ -72,9 +72,4 @@ for wells in wells_amount:
         k += 1
 
 
-
-
-
-
-
 print(f"итераций {k}")
