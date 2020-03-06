@@ -78,6 +78,14 @@ def MB_calculation(Nx, Ny, DesignVariant, calculation_steps):
     b_matrix_fluid = np.zeros((Ny * Nx), dtype="float32")   # один b для каждой ячейки
 
     for step in range(calculation_steps):
+        # Вывод насыщений на начало месяца
+        # print(f"Насыщения ячеек на момент {step} месяца")
+        # for cell in range(Nx * Ny):
+        #     # for_print = (CellsBox.cells_numbers[cell].oil_fund / (CellsBox.cells_numbers[cell].water_fund+CellsBox.cells_numbers[cell].oil_fund))
+        #     for_print = str(CellsBox.cells_numbers[cell].layer_pressure_fluid[step])
+        #     print(for_print[0:6], end="|")
+        # print(f"\n{'-' * Nx * Nx}")
+        # конец
         do_iter = 0
         while True:
             "# прохожусь по ячейкам, передаю координаты текущей ячейки в матбаланс"
@@ -108,48 +116,71 @@ def MB_calculation(Nx, Ny, DesignVariant, calculation_steps):
             2)Если погрешность по жидкости не сошлась, взять новые приближения по жидкости  
             """
             #  выполнится если сошлось давление по жидкости
-            if pressure_accuracy:
-                pressure_oil_roots = []
-                for cell in range(Nx*Ny):
-                    water_saturation = CellsBox.cells_numbers[cell].water_fund/CellsBox.cells_numbers[cell].beginningFluid
-                    pressure_oil_roots.append(pressure_fluid_roots[cell] - Leverett.JFunction(water_saturation))
-                    CellsBox.cells_numbers[cell].save_pressures_oil(pressure_oil_roots[cell], step)
-
-
-                for cell in range(Nx * Ny):
-                    element = CellsBox.cells_numbers[cell]
-                    if CellsBox.cells_numbers[cell].well_presence :
-                        well = CellsBox.cells_numbers[cell].well_presence
-                        if well.destiny == "extract":
-                            layer_pressure = element.get_pressure_oil(step+1)
-                            delta_pressure = layer_pressure - well.well_pressure
-                            production = ((element.get_oil_permeability() * delta_pressure * element.CellHeight)/
-                                          (18.41 *element.mu_oil*(math.log((well.Rb/well.Rw)) - 0.75 + well.Skin)))*0.03
-                            well.save_production(step, production)
-                            element.oil_fund += production
-                        else:
-                            delta_pressure = element.beginningPressure - element.get_pressure_oil(step+1)
-                            beginning_fund = element.beginningFluid * element.ce*element.Boil
-                            mass_change = delta_pressure*beginning_fund
-                            element.oil_fund += mass_change
-
-                    # посчитать перетоки используя давления по нефти и воде
-
             for cell in range(Nx * Ny):
                 CellsBox.cells_numbers[cell].new_approach(pressure_fluid_roots[cell], step, pressure_accuracy)
 
             if pressure_accuracy:
+                pressure_oil_roots = []
+                for cell in range(Nx*Ny):
+                    water_saturation = CellsBox.cells_numbers[cell].water_fund/CellsBox.cells_numbers[cell].fluid_fund
+                    pressure_oil_roots.append(pressure_fluid_roots[cell] - Leverett.JFunction(water_saturation))
+                    CellsBox.cells_numbers[cell].save_pressures_oil(pressure_oil_roots[cell], step)
+            #
+            #
+            #     for cell in range(Nx * Ny):
+            #         element = CellsBox.cells_numbers[cell]
+            #         if CellsBox.cells_numbers[cell].well_presence :
+            #             well = CellsBox.cells_numbers[cell].well_presence
+            #             if well.destiny == "extract":
+            #                 layer_pressure = element.get_pressure_oil(step+1)
+            #                 delta_pressure = layer_pressure - well.well_pressure
+            #                 production = ((element.get_oil_permeability() * delta_pressure * element.CellHeight)/
+            #                               (18.41 *element.mu_oil*(math.log((well.Rb/well.Rw)) - 0.75 + well.Skin)))*0.03
+            #                 well.save_production(step, production)
+            #                 element.oil_fund += production
+            #                 # аналогично считаю продуктивность по воде
+            #                 layer_pressure = element.get_pressure_fluid(step + 1)
+            #                 delta_pressure = layer_pressure - well.well_pressure
+            #                 production = ((element.get_water_permeability() * delta_pressure * element.CellHeight) /
+            #                               (18.41 * element.mu_water * (
+            #                                           math.log((well.Rb / well.Rw)) - 0.75 + well.Skin))) * 0.03
+            #                 well.save_production(step, production)
+            #                 element.water_fund += production
+            #             else:
+            #                 delta_pressure = element.beginningPressure - element.get_pressure_oil(step+1)
+            #                 beginning_fund = element.beginningFluid * element.ce*element.Boil
+            #                 mass_change = delta_pressure*beginning_fund
+            #                 element.oil_fund += mass_change
+            #                 # аналогично считаю продуктивность по воде
+            #                 delta_pressure = element.beginningPressure - element.get_pressure_fluid(step + 1)
+            #                 beginning_fund = element.beginningFluid * element.ce * element.Bwater
+            #                 mass_change = delta_pressure * beginning_fund
+            #                 element.water_fund += mass_change
+            #         else:
+            #             # посчитал воду
+            #             layer_pressure = element.get_pressure_fluid(step + 1)
+            #             delta_pressure = layer_pressure - element.beginningPressure
+            #             beginning_water = element.beginningWater * element.ce * element.Bw
+            #             element.water_fund += delta_pressure * beginning_water
+            #             # посчитал нефть
+            #             layer_pressure = element.get_pressure_oil(step + 1)
+            #             delta_pressure = layer_pressure - element.beginningPressure
+            #             beginning_oil = element.beginningOil * element.ce * element.Boil
+            #             element.oil_fund += delta_pressure * beginning_oil
+
+            if pressure_accuracy:
                 break
-            do_iter +=1
+            do_iter += 1
             print(do_iter)
 
+
     "# давления на последний месяц"
-    print(f"давление по нефти")
-    for i in range(Ny):
-        for j in range(Nx):
-            for_print = str(CellsBox.matrix[i, j].layer_pressure_oil[step])
-            print(for_print[0:6], end="|")
-        print(f"\n{'-'*Nx*Nx}")
+    # print(f"давление по нефти")
+    # for i in range(Ny):
+    #     for j in range(Nx):
+    #         for_print = str(CellsBox.matrix[i, j].layer_pressure_oil[step])
+    #         print(for_print[0:6], end="|")
+    #     print(f"\n{'-'*Nx*Nx}")
 
     print(f"давление по воде")
     for i in range(Ny):
@@ -158,9 +189,20 @@ def MB_calculation(Nx, Ny, DesignVariant, calculation_steps):
             print(for_print[0:6], end="|")
         print(f"\n{'-'*Nx*Nx}")
 
+    print(f"тыс.м3 жидкости в ячейке")
+    for i in range(Ny):
+        for j in range(Nx):
+            acc_flow = 0
+            # for key, val in CellsBox.matrix[i, j].fluid_flow_accumulated.items():
+            #     acc_flow += val
+            for_print = str(CellsBox.matrix[i, j].fluid_fund)
+            print(for_print[0:6], end="|")
+        print(f"\n{'-' * Nx * Nx}")
+
     print(CellsBox.matrix[int(Ny/2), int(Nx/2)].well_presence.accumulated_water_injection)
     print(CellsBox.matrix[int(Ny/2), int(Nx/2)].well_presence.accumulated_water_production)
     print(CellsBox.matrix[int(Ny/2), int(Nx/2)].well_presence.accumulated_oil_production)
+    print(CellsBox.matrix[int(Ny / 2), int(Nx / 2)].well_presence.accumulated_fluid_production)
 
     print(f'тип хранилища ячеек {type(CellsBox)}')
     print(f'время на инициализацию сетки: {timeAfter-timeBefore} секунд')

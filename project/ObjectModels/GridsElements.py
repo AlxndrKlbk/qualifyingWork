@@ -16,6 +16,7 @@ class GridsCell:
     mu_fluid = 5.5  # посмотреть как пересчитывать в зависимости от содержания компонент
     porosity = 0.4
     Boil = 1.126
+    Bw = 1
     beginningPressure = 250.0  #начальное пластовое давление (атм)
     beginningOilSaturation = 0.6 #доля нефти в жидкости
     CellSize = 100.0  #размер ребра ячейки (м)
@@ -195,10 +196,11 @@ class GridsCell:
 
             for direction in directions:
                 self.fluid_flow_accumulated[direction] = self.fluid_flow_fict[direction]
+                fluid_summ += self.fluid_flow_fict[direction]
             if self.well_presence:
                 well = self.well_presence
                 well.new_approach(step)   # этим действием вызывается запись накопленных показателей по скважине
-                fluid_summ += well.fict_water_production + well.fict_water_injection
+                fluid_summ += well.fict_fluid_production + well.fict_water_injection
 
             self.fluid_fund -= fluid_summ
 
