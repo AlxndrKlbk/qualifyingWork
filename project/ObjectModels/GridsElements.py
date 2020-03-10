@@ -30,6 +30,8 @@ class GridsCell:
         self.layer_pressure_water = {}  # пластовое давление в ячейке (атмосферы) на конец месяца
         self.layer_pressure_fluid = {}
         self.layer_pressure_oil = {}
+        self.oil_fund = {}
+        self.water_fund = {}
         self.layer_pressure_water_prev = GridsCell.beginningPressure + 1  # пластовое давление в ячейке (атмосферы) на конец месяца
         self.layer_pressure_oil_prev = GridsCell.beginningPressure + 1
         self.layer_pressure_fluid_prev = GridsCell.beginningPressure + 1
@@ -44,8 +46,8 @@ class GridsCell:
         self.neighbours = neighbours  # словарь соседей
         self.cell_number = cell_number
         self.absolute_permeability = GridsCell.absolute_permeability
-        self.oil_fund = GridsCell.beginningOil
-        self.water_fund = GridsCell.beginningWater
+        self.oil_fund[-1] = GridsCell.beginningOil
+        self.water_fund[-1] = GridsCell.beginningWater
         self.fluid_fund = GridsCell.beginningFluid
         self.layer_pressure_water[0] = GridsCell.beginningPressure
         self.layer_pressure_oil[0] = GridsCell.beginningPressure
@@ -90,8 +92,8 @@ class GridsCell:
     def get_fluid_permeability(self):
         return self.absolute_permeability
 
-    def get_water_permeability(self):
-        Sw = self.water_fund / self.beginningFluid
+    def get_water_permeability(self, step):
+        Sw = self.water_fund[step-1] / self.beginningFluid
         if Sw < 0:
             Sw = 0
         elif Sw > 1:
@@ -100,8 +102,8 @@ class GridsCell:
         #RPP = (14.358*(Sw**3) - 15.464*(Sw**2) + 5.5374*Sw - 0.6512)  # relative phase permeability
         return self.absolute_permeability * RPP
 
-    def get_oil_permeability(self):
-        Sw = self.water_fund / self.beginningFluid
+    def get_oil_permeability(self, step):
+        Sw = self.water_fund[step-1] / self.beginningFluid
         if Sw < 0 :
             Sw = 0
         elif Sw > 1:
@@ -319,6 +321,8 @@ class GridsWell:
         self.accumulated_fluid_production[step] = self.fict_fluid_production
         self.accumulated_water_injection[step] = self.fict_water_injection
 
-    def save_production(self, step, production):
-        self.accumulated_oil_production[step] = production
-
+    def save_production(self, step, production, phase):
+        if phase == "oil":
+            self.accumulated_oil_production[step] = production
+        elif phase == "water":
+            self.accumulated_water_production[step] = production
