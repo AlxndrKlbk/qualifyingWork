@@ -32,6 +32,7 @@ class GridsCell:
         self.layer_pressure_oil = {}
         self.oil_fund = {}
         self.water_fund = {}
+        self.fluid_fund = {}
         self.layer_pressure_water_prev = GridsCell.beginningPressure + 1  # пластовое давление в ячейке (атмосферы) на конец месяца
         self.layer_pressure_oil_prev = GridsCell.beginningPressure + 1
         self.layer_pressure_fluid_prev = GridsCell.beginningPressure + 1
@@ -48,7 +49,7 @@ class GridsCell:
         self.absolute_permeability = GridsCell.absolute_permeability
         self.oil_fund[-1] = GridsCell.beginningOil
         self.water_fund[-1] = GridsCell.beginningWater
-        self.fluid_fund = GridsCell.beginningFluid
+        self.fluid_fund[-1] = GridsCell.beginningFluid
         self.layer_pressure_water[0] = GridsCell.beginningPressure
         self.layer_pressure_oil[0] = GridsCell.beginningPressure
         self.layer_pressure_fluid[0] = GridsCell.beginningPressure
@@ -149,7 +150,7 @@ class GridsCell:
         :param step: calculation step (month)
         :return: fixes in entity and return value of flow in thousand meters**3
         """
-        permeability = self.get_water_permeability()
+        permeability = self.get_water_permeability(step)
         if self.neighbours[direction] and (this_cell_pressure >= another_cell_pressure):
             neighbour_x = self.neighbours[direction][1]
             neighbour_y = self.neighbours[direction][0]
@@ -170,7 +171,7 @@ class GridsCell:
         :param step: calculation step (month)
         :return: fixes in entity and return value of flow in thousand meters**3
         """
-        permeability = self.get_oil_permeability()
+        permeability = self.get_oil_permeability(step)
         if self.neighbours[direction]:
             if self.neighbours[direction] and (this_cell_pressure >= another_cell_pressure):
                 neighbour_x = self.neighbours[direction][1]
@@ -204,7 +205,7 @@ class GridsCell:
                 well.new_approach(step)   # этим действием вызывается запись накопленных показателей по скважине
                 fluid_summ += well.fict_fluid_production + well.fict_water_injection
 
-            self.fluid_fund -= fluid_summ
+            self.fluid_fund[step] = self.fluid_fund[step - 1] - fluid_summ
 
 
 class GridsWell:
@@ -263,9 +264,9 @@ class GridsWell:
         :param step: current month
         :return: fictitious water injection
         """
-        layer_pressure = cell.get_pressure_water(step)
+        layer_pressure = cell.get_pressure_fluid(step)
         delta_pressure = layer_pressure - self.well_pressure
-        self.fict_water_production = ((cell.get_water_permeability() * GridsCell.CellHeight * delta_pressure)/
+        self.fict_water_production = ((cell.get_water_permeability(step) * GridsCell.CellHeight * delta_pressure)/
                                       (18.41 * GridsCell.mu_water * (math.log((self.Rb / self.Rw)) - 0.75 + self.Skin)) * 0.03
                                       + self.get_accumulated_injection(step))
         return self.fict_water_production
@@ -279,7 +280,7 @@ class GridsWell:
         """
         layer_pressure = cell.get_pressure_water(step)
         delta_pressure = layer_pressure - self.well_pressure
-        self.fict_water_production = ((cell.get_water_permeability() * GridsCell.CellHeight * delta_pressure)/
+        self.fict_water_production = ((cell.get_water_permeability(step) * GridsCell.CellHeight * delta_pressure)/
                                       (18.41 * GridsCell.mu_water * (math.log((self.Rb/self.Rw)) - 0.75 + self.Skin))*0.03
                                       + self.get_accumulated_water_production(step))
         return self.fict_water_production
@@ -307,7 +308,7 @@ class GridsWell:
         """
         layer_pressure = cell.get_pressure_oil(step)
         delta_pressure = layer_pressure - self.well_pressure
-        self.fict_oil_production = ((cell.get_oil_permeability() * GridsCell.CellHeight * delta_pressure)/
+        self.fict_oil_production = ((cell.get_oil_permeability(step) * GridsCell.CellHeight * delta_pressure)/
                                     (18.41 * GridsCell.mu_oil * (math.log((self.Rb/self.Rw)) - 0.75 + self.Skin))*0.03
                                     + self.get_accumulated_oil_production(step))
         return self.fict_oil_production
@@ -322,7 +323,10 @@ class GridsWell:
         self.accumulated_water_injection[step] = self.fict_water_injection
 
     def save_production(self, step, production, phase):
-        if phase == "oil":
-            self.accumulated_oil_production[step] = production
-        elif phase == "water":
-            self.accumulated_water_production[step] = production
+        if self.destiny is "extraxt":
+            if phase == "oil":
+                self.accumulated_oil_production[step] = production
+            elif phase == "water":
+                self.accumulated_water_production[step] = production
+        else:
+            self.accumulated_water_injection[step] = production
