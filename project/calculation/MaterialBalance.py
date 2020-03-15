@@ -131,6 +131,10 @@ def MB_calculation(Nx, Ny, DesignVariant, calculation_steps):
                     if CellsBox.cells_numbers[cell].well_presence:
                         well = CellsBox.cells_numbers[cell].well_presence
                         if well.destiny == "extract":
+                            # перепиши эту мерзость!
+                            delta_pressure = element.beginningPressure - element.get_pressure_oil(step + 1)
+                            beginning_fund = element.beginningOil * element.ce * element.Boil
+                            mass_change = delta_pressure * beginning_fund
                             layer_pressure = element.get_pressure_oil(step+1)
                             delta_pressure = layer_pressure - well.well_pressure
                             production = ((element.get_oil_permeability(step) * delta_pressure * element.CellHeight)/
@@ -138,19 +142,22 @@ def MB_calculation(Nx, Ny, DesignVariant, calculation_steps):
                             if production > element.oil_fund[step-1]:
                                 production = element.oil_fund[step-1]
                             well.save_production(step, production, "oil")
-                            element.oil_fund[step] = element.oil_fund[step-1] + production
+                            element.oil_fund[step] = element.oil_fund[step-1] - mass_change
                             # аналогично считаю продуктивность по воде
+                            delta_pressure = element.beginningPressure - element.get_pressure_fluid(step + 1)
+                            beginning_fund = element.beginningWater * element.ce * element.Bw
+                            mass_change = delta_pressure * beginning_fund
                             layer_pressure = element.get_pressure_fluid(step + 1)
                             delta_pressure = layer_pressure - well.well_pressure
                             production = ((element.get_water_permeability(step) * delta_pressure * element.CellHeight) /
                                           (18.41 * element.mu_water * (
                                                       math.log((well.Rb / well.Rw)) - 0.75 + well.Skin))) * 0.03
                             well.save_production(step, production, "water")
-                            element.water_fund[step] = element.water_fund[step-1] + production
+                            element.water_fund[step] = element.water_fund[step-1] - mass_change
                         else:
                             # закачанный объем жидкости в пласт
                             delta_pressure = element.beginningPressure - element.get_pressure_fluid(step + 1)
-                            beginning_fund = element.beginningFluid * element.ce * element.Bw
+                            beginning_fund = element.beginningWater * element.ce * element.Bw
                             mass_change = delta_pressure * beginning_fund
                             layer_pressure = element.get_pressure_fluid(step + 1)
                             delta_pressure = layer_pressure - well.well_pressure
@@ -158,18 +165,25 @@ def MB_calculation(Nx, Ny, DesignVariant, calculation_steps):
                                           (18.41 * element.mu_water * (
                                                   math.log((well.Rb / well.Rw)) - 0.75 + well.Skin))) * 0.03
                             well.save_production(step, production, "water")
-                            element.water_fund[step] = element.water_fund[step-1] + mass_change
+                            element.water_fund[step] = element.water_fund[step-1] - mass_change
+                            # сколько нефти вытеснилось из ячейки
+                            delta_pressure = element.beginningPressure - element.get_pressure_oil(step + 1)
+                            beginning_fund = element.beginningOil * element.ce * element.Boil
+                            mass_change = delta_pressure * beginning_fund
+                            element.oil_fund[step] = element.oil_fund[step - 1] + mass_change
                     else:
                         # посчитал воду
                         layer_pressure = element.get_pressure_fluid(step + 1)
                         delta_pressure = layer_pressure - element.beginningPressure
                         beginning_water = element.beginningWater * element.ce * element.Bw
-                        element.water_fund[step] = element.water_fund[step-1] + delta_pressure * beginning_water
+                        mass_change = delta_pressure * beginning_water
+                        element.water_fund[step] = element.water_fund[step-1] + mass_change
                         # посчитал нефть
                         layer_pressure = element.get_pressure_oil(step + 1)
                         delta_pressure = layer_pressure - element.beginningPressure
                         beginning_oil = element.beginningOil * element.ce * element.Boil
-                        element.oil_fund[step] = element.oil_fund[step-1] + delta_pressure * beginning_oil
+                        mass_change = delta_pressure * beginning_oil
+                        element.oil_fund[step] = element.oil_fund[step-1] + mass_change
 
             if pressure_accuracy:
                 break
@@ -214,12 +228,13 @@ if __name__ == "__main__":
     DesignVariant = [(int(0), int(0), "extract"), (int(Ny-1), int(Nx-1), "inject")]
     months = 200
     calculatedObject = MB_calculation(Nx, Ny, DesignVariant, months)
-    for mounth in range(1, months):
+    for mounth in range(months):
         print(f"нысыщение блоков водой на {mounth} месяц")
         for i in range(Ny):
             for j in range(Nx):
-                a = calculatedObject.matrix[i,j].water_fund[mounth]
-                b = calculatedObject.matrix[i,j].fluid_fund[mounth]
-                for_print = str(calculatedObject.matrix[i,j].water_fund[mounth]/calculatedObject.matrix[i,j].fluid_fund[mounth])
+                for_print = str(calculatedObject.matrix[i, j].water_fund[mounth]/calculatedObject.matrix[i,j].fluid_fund[mounth])
                 print(for_print, end="|")
-        print(f"\n{'-' * Nx * Ny }")
+            print(f"\n{'-' * Nx * Ny }")
+
+    for cell in range(Nx*Ny):
+        print(calculatedObject.cells_numbers[cell].oil_fund)

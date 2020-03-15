@@ -94,23 +94,27 @@ class GridsCell:
         return self.absolute_permeability
 
     def get_water_permeability(self, step):
-        Sw = self.water_fund[step-1] / self.beginningFluid
-        if Sw < 0:
-            Sw = 0
-        elif Sw > 1:
-            Sw = 1
-        RPP = 0.3*Sw
+        Sw = self.water_fund[step-1] / self.fluid_fund[step-1]
+        if Sw < 0.2:
+            Sw = 0.2
+        elif Sw > 0.7:
+            Sw = 0.7
+        RPP = 0.4286*Sw
         #RPP = (14.358*(Sw**3) - 15.464*(Sw**2) + 5.5374*Sw - 0.6512)  # relative phase permeability
         return self.absolute_permeability * RPP
 
     def get_oil_permeability(self, step):
-        Sw = self.water_fund[step-1] / self.beginningFluid
-        if Sw < 0 :
-            Sw = 0
-        elif Sw > 1:
-            Sw = 1
+        Sw = self.water_fund[step-1] / self.fluid_fund[step-1]
 
-        RPP = 0.5357*(Sw**4) - 2.1071 * (Sw**3) + 3.4232*(Sw**2) - 2.8518*Sw + 1
+        if 0 <= Sw < 0.7:
+            RPP = 7.1429 * (Sw ** 4) - 10.952 * (Sw ** 3) + 6.7143 * (Sw ** 2) - 3.2119 * Sw + 1
+        elif Sw < 0:
+            Sw = 0
+            RPP = 7.1429 * (Sw ** 4) - 10.952 * (Sw ** 3) + 6.7143 * (Sw ** 2) - 3.2119 * Sw + 1
+        elif Sw > 0.7:
+            RPP = 0
+
+        #RPP = 0.5357*(Sw**4) - 2.1071 * (Sw**3) + 3.4232*(Sw**2) - 2.8518*Sw + 1
         #RPP = (440.02*(Sw**4) - 859.22*(Sw**3) + 628.34*(Sw**2) - 204.27*So + 24.955)  # relative phase permeability
         return self.absolute_permeability * RPP
 
@@ -266,10 +270,10 @@ class GridsWell:
         """
         layer_pressure = cell.get_pressure_fluid(step)
         delta_pressure = layer_pressure - self.well_pressure
-        self.fict_water_production = ((cell.get_water_permeability(step) * GridsCell.CellHeight * delta_pressure)/
+        self.fict_water_injection = ((cell.get_water_permeability(step) * GridsCell.CellHeight * delta_pressure)/
                                       (18.41 * GridsCell.mu_water * (math.log((self.Rb / self.Rw)) - 0.75 + self.Skin)) * 0.03
                                       + self.get_accumulated_injection(step))
-        return self.fict_water_production
+        return self.fict_water_injection
 
     def water_production(self, cell, step):
         """This function return accumulated water production considering current mouth production
@@ -323,7 +327,7 @@ class GridsWell:
         self.accumulated_water_injection[step] = self.fict_water_injection
 
     def save_production(self, step, production, phase):
-        if self.destiny is "extraxt":
+        if self.destiny is "extract":
             if phase == "oil":
                 self.accumulated_oil_production[step] = production
             elif phase == "water":
