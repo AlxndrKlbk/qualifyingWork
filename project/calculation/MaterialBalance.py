@@ -1,6 +1,7 @@
 import sys
 from project.ObjectModels import Grid
 from project.calculation import Leverett
+from project.calculation import BuckleyLeverett
 import numpy as np
 import time
 import copy
@@ -126,64 +127,105 @@ def MB_calculation(Nx, Ny, DesignVariant, calculation_steps):
                     pressure_oil_roots.append(pressure_fluid_roots[cell] - Leverett.JFunction(water_saturation))
                     CellsBox.cells_numbers[cell].save_pressures_oil(pressure_oil_roots[cell], step)
 
-                for cell in range(Nx * Ny):
+                # ниже и до конца отвечает за изменение запасов фаз в ячейках
+                for cell in range(Nx*Ny):
                     element = CellsBox.cells_numbers[cell]
-                    if CellsBox.cells_numbers[cell].well_presence:
+                    oil_flow = 0
+                    #water_flow = 0
+
+                    for direction, coordinates in element.neighbours.items():
+                        if direction != "itself" and coordinates is not None:
+                            flow_for_direction = element.fluid_flow_fict[direction]
+                            this_cell_pressure = pressure_fluid_roots[cell]
+                            neighbour_number = CellsBox.matrix[coordinates[0]][coordinates[1]].cell_number
+                            another_cells_pressure = pressure_fluid_roots[neighbour_number]
+                            if this_cell_pressure >= another_cells_pressure:
+                                water_perm = CellsBox.cells_numbers[neighbour_number].get_water_permeability(step)
+                                oil_perm = CellsBox.cells_numbers[neighbour_number].get_oil_permeability(step)
+                            else:
+                                water_perm = element.get_water_permeability(step)
+                                oil_perm = element.get_oil_permeability(step)
+                            water_share = BuckleyLeverett.BuckleyLeverett(water_perm, oil_perm) # доля воды в потоке
+                            if CellsBox.cells_numbers[neighbour_number].oil_fund[step-1] < flow_for_direction * (1 - water_share):
+                                flow_for_direction = CellsBox.cells_numbers[neighbour_number].oil_fund[step-1]
+                            oil_flow += -1 * (flow_for_direction * (1-water_share) ) # домножение на -1, т.к поток считается отрицательным, если направлен ВНУТРЬ элемента.
+                            #water_flow += -1 *(flow_for_direction*water_share)
+
+                    oil_production = 0
+                    if element.well_presence:
                         well = CellsBox.cells_numbers[cell].well_presence
                         if well.destiny == "extract":
-                            # перепиши эту мерзость!
-                            delta_pressure = element.beginningPressure - element.get_pressure_oil(step + 1)
-                            beginning_fund = element.beginningOil * element.ce * element.Boil
-                            mass_change = delta_pressure * beginning_fund
-                            layer_pressure = element.get_pressure_oil(step+1)
-                            delta_pressure = layer_pressure - well.well_pressure
-                            production = ((element.get_oil_permeability(step) * delta_pressure * element.CellHeight)/
-                                          (18.41 * element.mu_oil*(math.log((well.Rb/well.Rw)) - 0.75 + well.Skin)))*0.03
-                            if production > element.oil_fund[step-1]:
-                                production = element.oil_fund[step-1]
-                            well.save_production(step, production, "oil")
-                            element.oil_fund[step] = element.oil_fund[step-1] - mass_change
-                            # аналогично считаю продуктивность по воде
-                            delta_pressure = element.beginningPressure - element.get_pressure_fluid(step + 1)
-                            beginning_fund = element.beginningWater * element.ce * element.Bw
-                            mass_change = delta_pressure * beginning_fund
-                            layer_pressure = element.get_pressure_fluid(step + 1)
-                            delta_pressure = layer_pressure - well.well_pressure
-                            production = ((element.get_water_permeability(step) * delta_pressure * element.CellHeight) /
-                                          (18.41 * element.mu_water * (
-                                                      math.log((well.Rb / well.Rw)) - 0.75 + well.Skin))) * 0.03
-                            well.save_production(step, production, "water")
-                            element.water_fund[step] = element.water_fund[step-1] - mass_change
-                        else:
-                            # закачанный объем жидкости в пласт
-                            delta_pressure = element.beginningPressure - element.get_pressure_fluid(step + 1)
-                            beginning_fund = element.beginningWater * element.ce * element.Bw
-                            mass_change = delta_pressure * beginning_fund
-                            layer_pressure = element.get_pressure_fluid(step + 1)
-                            delta_pressure = layer_pressure - well.well_pressure
-                            production = ((element.get_water_permeability(step) * delta_pressure * element.CellHeight) /
-                                          (18.41 * element.mu_water * (
-                                                  math.log((well.Rb / well.Rw)) - 0.75 + well.Skin))) * 0.03
-                            well.save_production(step, production, "water")
-                            element.water_fund[step] = element.water_fund[step-1] - mass_change
-                            # сколько нефти вытеснилось из ячейки
-                            delta_pressure = element.beginningPressure - element.get_pressure_oil(step + 1)
-                            beginning_fund = element.beginningOil * element.ce * element.Boil
-                            mass_change = delta_pressure * beginning_fund
-                            element.oil_fund[step] = element.oil_fund[step - 1] + mass_change
-                    else:
-                        # посчитал воду
-                        layer_pressure = element.get_pressure_fluid(step + 1)
-                        delta_pressure = layer_pressure - element.beginningPressure
-                        beginning_water = element.beginningWater * element.ce * element.Bw
-                        mass_change = delta_pressure * beginning_water
-                        element.water_fund[step] = element.water_fund[step-1] + mass_change
-                        # посчитал нефть
-                        layer_pressure = element.get_pressure_oil(step + 1)
-                        delta_pressure = layer_pressure - element.beginningPressure
-                        beginning_oil = element.beginningOil * element.ce * element.Boil
-                        mass_change = delta_pressure * beginning_oil
-                        element.oil_fund[step] = element.oil_fund[step-1] + mass_change
+                            fluid_production = well.fict_fluid_production
+                            water_perm = element.get_water_permeability(step)
+                            oil_perm = element.get_oil_permeability(step)
+                            water_share = BuckleyLeverett.BuckleyLeverett(water_perm, oil_perm)
+                            oil_production = fluid_production * (1 - water_share)
+                            well.save_production(step, oil_production, "oil")
+                            #water_production = fluid_production *water_share
+
+                    element.oil_fund[step] = element.oil_fund[step - 1] - oil_production + oil_flow
+                    fluid_in_cell = element.fluid_fund[step]
+                    element.water_fund[step] = fluid_in_cell * (1 - element.oil_fund[step]/fluid_in_cell)
+                    print(element.water_fund[step])
+
+                # for cell in range(Nx * Ny):
+                #     element = CellsBox.cells_numbers[cell]
+                #     if CellsBox.cells_numbers[cell].well_presence:
+                #         well = CellsBox.cells_numbers[cell].well_presence
+                #         if well.destiny == "extract":
+                #             # перепиши эту мерзость!
+                #             delta_pressure = element.beginningPressure - element.get_pressure_oil(step + 1)
+                #             beginning_fund = element.beginningOil * element.ce * element.Boil
+                #             mass_change = delta_pressure * beginning_fund
+                #             layer_pressure = element.get_pressure_oil(step+1)
+                #             delta_pressure = layer_pressure - well.well_pressure
+                #             production = ((element.get_oil_permeability(step) * delta_pressure * element.CellHeight)/
+                #                           (18.41 * element.mu_oil*(math.log((well.Rb/well.Rw)) - 0.75 + well.Skin)))*0.03
+                #             if production > element.oil_fund[step-1]:
+                #                 production = element.oil_fund[step-1]
+                #             well.save_production(step, production, "oil")
+                #             element.oil_fund[step] = element.oil_fund[step-1] - mass_change
+                #             # аналогично считаю продуктивность по воде
+                #             delta_pressure = element.beginningPressure - element.get_pressure_fluid(step + 1)
+                #             beginning_fund = element.beginningWater * element.ce * element.Bw
+                #             mass_change = delta_pressure * beginning_fund
+                #             layer_pressure = element.get_pressure_fluid(step + 1)
+                #             delta_pressure = layer_pressure - well.well_pressure
+                #             production = ((element.get_water_permeability(step) * delta_pressure * element.CellHeight) /
+                #                           (18.41 * element.mu_water * (
+                #                                       math.log((well.Rb / well.Rw)) - 0.75 + well.Skin))) * 0.03
+                #             well.save_production(step, production, "water")
+                #             element.water_fund[step] = element.water_fund[step-1] - mass_change
+                #         else:
+                #             # закачанный объем жидкости в пласт
+                #             delta_pressure = element.beginningPressure - element.get_pressure_fluid(step + 1)
+                #             beginning_fund = element.beginningWater * element.ce * element.Bw
+                #             mass_change = delta_pressure * beginning_fund
+                #             layer_pressure = element.get_pressure_fluid(step + 1)
+                #             delta_pressure = layer_pressure - well.well_pressure
+                #             production = ((element.get_water_permeability(step) * delta_pressure * element.CellHeight) /
+                #                           (18.41 * element.mu_water * (
+                #                                   math.log((well.Rb / well.Rw)) - 0.75 + well.Skin))) * 0.03
+                #             well.save_production(step, production, "water")
+                #             element.water_fund[step] = element.water_fund[step-1] - mass_change
+                #             # сколько нефти вытеснилось из ячейки
+                #             delta_pressure = element.beginningPressure - element.get_pressure_oil(step + 1)
+                #             beginning_fund = element.beginningOil * element.ce * element.Boil
+                #             mass_change = delta_pressure * beginning_fund
+                #             element.oil_fund[step] = element.oil_fund[step - 1] + mass_change
+                #     else:
+                #         # посчитал воду
+                #         layer_pressure = element.get_pressure_fluid(step + 1)
+                #         delta_pressure = layer_pressure - element.beginningPressure
+                #         beginning_water = element.beginningWater * element.ce * element.Bw
+                #         mass_change = delta_pressure * beginning_water
+                #         element.water_fund[step] = element.water_fund[step-1] + mass_change
+                #         # посчитал нефть
+                #         layer_pressure = element.get_pressure_oil(step + 1)
+                #         delta_pressure = layer_pressure - element.beginningPressure
+                #         beginning_oil = element.beginningOil * element.ce * element.Boil
+                #         mass_change = delta_pressure * beginning_oil
+                #         element.oil_fund[step] = element.oil_fund[step-1] + mass_change
 
             if pressure_accuracy:
                 break
