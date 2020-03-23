@@ -140,14 +140,21 @@ def MB_calculation(Nx, Ny, DesignVariant, calculation_steps):
                             neighbour_number = CellsBox.matrix[coordinates[0]][coordinates[1]].cell_number
                             another_cells_pressure = pressure_fluid_roots[neighbour_number]
                             if this_cell_pressure >= another_cells_pressure:
-                                water_perm = CellsBox.cells_numbers[neighbour_number].get_water_permeability(step)
-                                oil_perm = CellsBox.cells_numbers[neighbour_number].get_oil_permeability(step)
+                                if element.get_oil_permeability(step) == 0:
+                                    oil_perm = 0
+                                    water_perm = 1
+                                else:
+                                    water_perm = CellsBox.cells_numbers[neighbour_number].get_water_permeability(step)
+                                    oil_perm = CellsBox.cells_numbers[neighbour_number].get_oil_permeability(step)
                             else:
-                                water_perm = element.get_water_permeability(step)
-                                oil_perm = element.get_oil_permeability(step)
+                                if CellsBox.cells_numbers[neighbour_number].get_oil_permeability(step) == 0:
+                                    oil_perm = 0
+                                    water_perm = 1
+                                else:
+                                    water_perm = element.get_water_permeability(step)
+                                    oil_perm = element.get_oil_permeability(step)
+
                             water_share = BuckleyLeverett.BuckleyLeverett(water_perm, oil_perm) # доля воды в потоке
-                            if CellsBox.cells_numbers[neighbour_number].oil_fund[step-1] < flow_for_direction * (1 - water_share):
-                                flow_for_direction = CellsBox.cells_numbers[neighbour_number].oil_fund[step-1]
                             oil_flow += -1 * (flow_for_direction * (1-water_share) ) # домножение на -1, т.к поток считается отрицательным, если направлен ВНУТРЬ элемента.
                             #water_flow += -1 *(flow_for_direction*water_share)
 
@@ -268,7 +275,7 @@ if __name__ == "__main__":
     Nx = 10
     Ny = 1
     DesignVariant = [(int(0), int(0), "extract"), (int(Ny-1), int(Nx-1), "inject")]
-    months = 200
+    months = 600
     calculatedObject = MB_calculation(Nx, Ny, DesignVariant, months)
     for mounth in range(months):
         print(f"нысыщение блоков водой на {mounth} месяц")
