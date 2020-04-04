@@ -156,7 +156,6 @@ def MB_calculation(Nx, Ny, DesignVariant, calculation_steps):
 
                             water_share = BuckleyLeverett.BuckleyLeverett(water_perm, oil_perm) # доля воды в потоке
                             oil_flow += -1 * (flow_for_direction * (1-water_share) ) # домножение на -1, т.к поток считается отрицательным, если направлен ВНУТРЬ элемента.
-                            #water_flow += -1 *(flow_for_direction*water_share)
 
                     oil_production = 0
                     if element.well_presence:
@@ -169,6 +168,9 @@ def MB_calculation(Nx, Ny, DesignVariant, calculation_steps):
                             oil_production = fluid_production * (1 - water_share)
                             well.save_production(step, oil_production, "oil")
                             #water_production = fluid_production *water_share
+
+                    if oil_flow > element.beginningOil - element.oil_fund[step-1] + oil_production:
+                        oil_flow =0
 
                     element.oil_fund[step] = element.oil_fund[step - 1] - oil_production + oil_flow
                     fluid_in_cell = element.fluid_fund[step]
@@ -275,7 +277,7 @@ if __name__ == "__main__":
     Nx = 10
     Ny = 1
     DesignVariant = [(int(0), int(0), "extract"), (int(Ny-1), int(Nx-1), "inject")]
-    months = 600
+    months = 2000
     calculatedObject = MB_calculation(Nx, Ny, DesignVariant, months)
     for mounth in range(months):
         print(f"нысыщение блоков водой на {mounth} месяц")
