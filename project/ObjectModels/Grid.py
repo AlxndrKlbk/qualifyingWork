@@ -50,7 +50,7 @@ class Grid:
                 matrix[y, x].well_presence = GridsElements.GridsWell(destiny=well_type,
                                                                      coordinate_x=x,
                                                                      coordinate_y=y,
-                                                                     well_number=i+1)
+                                                                     well_number=i)
                 self.wells_list.append(matrix[y, x].well_presence)
             return matrix
         self.wells_list = []

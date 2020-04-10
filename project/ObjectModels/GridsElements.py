@@ -10,7 +10,7 @@ class GridsCell:
     CellSize - размер ребра ячейки (м)
     CellHeight - мощность ННТ в ячейке (м)
     """
-    ce = 0.0000149  # сжимаемость системы, аналитическая функция есть в курсаче (1/атм)
+    ce = 0.0000149  # сжимаемость системы, аналитическая функция в матмодели (1/атм)
     mu_oil = 10  # сП
     mu_water = 1  # сП
     mu_fluid = 5.5  # посмотреть как пересчитывать в зависимости от содержания компонент
@@ -113,6 +113,8 @@ class GridsCell:
             RPP = 7.1429 * (Sw ** 4) - 10.952 * (Sw ** 3) + 6.7143 * (Sw ** 2) - 3.2119 * Sw + 1
         elif Sw > 0.7:
             RPP = 0
+        else:
+            RPP = 0
 
         #RPP = 0.5357*(Sw**4) - 2.1071 * (Sw**3) + 3.4232*(Sw**2) - 2.8518*Sw + 1
         #RPP = (440.02*(Sw**4) - 859.22*(Sw**3) + 628.34*(Sw**2) - 204.27*So + 24.955)  # relative phase permeability
@@ -214,11 +216,15 @@ class GridsCell:
 
 class GridsWell:
 
-    Rb = 250  # радиус контура питания, м
     Rw = 0.15  # радиус ствола скважины, м
     Skin = -3  # скин фактор
 
     def __init__(self, coordinate_x=None, coordinate_y=None, well_number=None, destiny=None):
+
+        def radios_calc():
+            return (0.28 * (2 *(GridsCell.CellSize**2)**0.5))/(2 * ((GridsCell.absolute_permeability * pow(10, -9)) ** 0.25))
+
+        self.Rb = radios_calc()
         self.well_number = well_number
         self.destiny = destiny
         self.coordinate_x = coordinate_x

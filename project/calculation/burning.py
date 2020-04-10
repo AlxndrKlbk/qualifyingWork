@@ -15,7 +15,8 @@ def income_calculation(wells_list, last_mouth, price):
     amount = len(wells_list)
     accumulated_production = 0
     for well in wells_list:
-        accumulated_production += well.accumulated_oil_production[int(last_mouth-1)]
+        if well.destiny == 'extract':
+            accumulated_production += well.accumulated_oil_production[last_mouth-1]
 
     calc_npv = (accumulated_production * 1000 * 0.85 * price)/(amount * nns_cost)
     return calc_npv
@@ -44,8 +45,10 @@ k = 1
 
 Temperature = Tini
 
+
 for wells in wells_amount:
     while Temperature > Tmin:
+        extract_amount = 0
         taken_coords = []
         compited_iterations = 0
         while compited_iterations < wells:
@@ -54,19 +57,25 @@ for wells in wells_amount:
             if (y, x) not in taken_coords:
                 if compited_iterations > 0:
                     destiny = random.choice(fate)
+                    if destiny == "extract":
+                        extract_amount +=1
                 else:
                     destiny = "extract"
-                DesignVariant.append((y, x, destiny))
+                    extract_amount += 1
+                DesignVariant.append((int(y), int(x), destiny))
                 # сделать назначение роли, добавление в DesignVariant
                 for dy in range(-1, 2):
                     for dx in range(-1, 2):
                         taken_coords.append((y + dy, x + dx))
                 taken_coords = list(set(taken_coords))
                 compited_iterations += 1
+
+        print(f"добывающих {extract_amount} из {wells}")
         print(DesignVariant)
 
         result = MaterialBalance.MB_calculation(Nx, Ny, DesignVariant, months)  # CellBox запихать в цикл и смотреть динамику скважин
         NPV = income_calculation(result.wells_list, months, oil_price)
+        print(NPV)
 
         Temperature = temperature_k(Tini,k)
         k += 1
