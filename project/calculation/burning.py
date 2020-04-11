@@ -49,6 +49,7 @@ Temperature = Tini
 for wells in wells_amount:
     while Temperature > Tmin:
         extract_amount = 0
+        DesignVariant = []
         taken_coords = []
         compited_iterations = 0
         while compited_iterations < wells:
@@ -77,7 +78,7 @@ for wells in wells_amount:
         NPV = income_calculation(result.wells_list, months, oil_price)
         print(NPV)
 
-        Temperature = temperature_k(Tini,k)
+        Temperature = temperature_k(Tini, k)
         k += 1
 
 

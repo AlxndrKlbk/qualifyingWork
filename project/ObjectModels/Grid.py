@@ -42,7 +42,7 @@ class Grid:
                     self.cells_numbers[number] = matrix[y, x]
                     number += 1
 
-            for i in range(len(DesignVariant)):  # список кортежей-вариантов (y,x, назнеачение)
+            for i in range(len(DesignVariant)):  # список кортежей-вариантов (y,x, назначение)
                 variant = DesignVariant[i]
                 x = variant[1]
                 y = variant[0]

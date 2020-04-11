@@ -170,7 +170,7 @@ def MB_calculation(Nx, Ny, DesignVariant, calculation_steps):
             if pressure_accuracy:
                 break
             do_iter += 1
-            #print(do_iter)
+            print("calculating ...")
 
 
     "# давления на последний месяц"
