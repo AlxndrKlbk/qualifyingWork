@@ -2,6 +2,7 @@ import copy
 import random
 import math
 from project.calculation import MaterialBalance
+from project.visualisation import drawing
 
 """
 имитация отжига
@@ -17,9 +18,11 @@ def income_calculation(wells_list, last_mouth, price):
     for well in wells_list:
         if well.destiny == 'extract':
             accumulated_production += well.accumulated_oil_production[last_mouth-1]
-
     calc_npv = (accumulated_production * 1000 * 0.85 * price)/(amount * nns_cost)
     return calc_npv
+
+Best_npv = 0
+Best_variant = None
 
 oil_price = 23000 # руб/т
 nns_cost = 19153500  # цена бурения ННС рублей
@@ -76,6 +79,10 @@ for wells in wells_amount:
 
         result = MaterialBalance.MB_calculation(Nx, Ny, DesignVariant, months)  # CellBox запихать в цикл и смотреть динамику скважин
         NPV = income_calculation(result.wells_list, months, oil_price)
+
+        if NPV > Best_npv:
+            Best_variant = result
+            drawing.draw_graph(Nx, Ny, result, months)
         print(NPV)
 
         Temperature = temperature_k(Tini, k)
