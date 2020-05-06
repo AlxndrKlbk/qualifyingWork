@@ -20,4 +20,6 @@ def draw_graph(Nx, Ny, myData, month):
     fiqure = plot.figure()
     axes = Axes3D(fiqure)
     axes.plot_surface(xgrid, ygrid, zgrid, cmap="summer", antialiased=True)
+    plot.xlim(0, Nx)
+    plot.ylim(0, Ny)
     plot.show()
