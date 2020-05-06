@@ -9,13 +9,13 @@ def draw_graph(Nx, Ny, myData, month):
     x = numpy.arange(0, Nx, 1)
     y = numpy.arange(0, Ny, 1)
     xgrid, ygrid = numpy.meshgrid(x, y)
-    xgrid = zoom(xgrid, zoom_power )
-    ygrid = zoom(ygrid, zoom_power)
+    #xgrid = zoom(xgrid, zoom_power )
+    #ygrid = zoom(ygrid, zoom_power)
     zgrid = numpy.zeros((Ny, Nx))
     for i in range(Ny):
         for j in range(Nx):
             zgrid[i,j] = myData.matrix[i, j].layer_pressure_fluid[month]
-    zgrid = zoom(zgrid, zoom_power)
+    #zgrid = zoom(zgrid, zoom_power)
 
     fiqure = plot.figure()
     axes = Axes3D(fiqure)
