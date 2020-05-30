@@ -67,7 +67,6 @@ for wells in wells_amount:
                     destiny = "extract"
                     extract_amount += 1
                 DesignVariant.append((int(y), int(x), destiny))
-                # сделать назначение роли, добавление в DesignVariant
                 for dy in range(-1, 2):
                     for dx in range(-1, 2):
                         taken_coords.append((y + dy, x + dx))
@@ -77,7 +76,7 @@ for wells in wells_amount:
         print(f"добывающих {extract_amount} из {wells}")
         print(DesignVariant)
 
-        result = MaterialBalance.MB_calculation(Nx, Ny, DesignVariant, months)  # CellBox запихать в цикл и смотреть динамику скважин
+        result = MaterialBalance.MB_calculation(Nx, Ny, DesignVariant, months)
         NPV = income_calculation(result.wells_list, months, oil_price)
 
         if NPV > Best_npv:

@@ -9,7 +9,7 @@ class Grid:
 
         :param Nx:  amount of cells along the X axis
         :param Ny:  amount of cells along the Y axis
-        :param well_location: should my object DesignVariant
+        :param DesignVariant: tuple with wells coordinates and purpose
         :return: generated numeric field
         """
 
