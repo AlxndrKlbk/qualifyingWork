@@ -18,7 +18,7 @@ def income_calculation(wells_list, last_mouth, price):
     for well in wells_list:
         if well.destiny == 'extract':
             accumulated_production += well.accumulated_oil_production[last_mouth-1]
-    calc_npv = (accumulated_production * 1000 * 0.85 * price)/(amount * nns_cost) + 0.8
+    calc_npv = (accumulated_production * 1000 * 0.85 * price)/(amount * nns_cost)
     return calc_npv
 
 Best_npv = 0
