@@ -41,5 +41,6 @@ def draw_NPV_grapg(NPV_list):
     axes2.scatter(wells_amount, NPV_per_variant)
     axes2.set_xlabel("Добывающих скважин", color="red")
     axes2.set_ylabel("NPV", color="red")
+    axes2.grid()
 
     plot.show()

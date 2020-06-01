@@ -44,14 +44,15 @@ smallest_amount = min(wells_amount)
 wells_amount.append(smallest_amount + 1)
 wells_amount.append(smallest_amount - 1)
 
-k = 1
+
 
 Temperature = Tini
 economic_list = []
 result = None
 
 for wells in wells_amount:
-    while k < 100:
+    k = 1
+    while k < 10:
         extract_amount = 0
         DesignVariant = []
         taken_coords = []
@@ -93,7 +94,7 @@ for wells in wells_amount:
         Temperature = temperature_k(Tini, k)
         k += 1
 
-drawing.draw_pressure_graph(Nx, Ny, result, months)
-drawing.draw_NPV_grapg(economic_list)
+    drawing.draw_pressure_graph(Nx, Ny, result, months)
+    drawing.draw_NPV_grapg(economic_list)
 
 print(f"итераций {k}")
