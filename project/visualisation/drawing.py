@@ -44,3 +44,19 @@ def draw_NPV_grapg(NPV_list):
     axes2.grid()
 
     plot.show()
+
+
+def draw_oil_saturation(Nx, Ny, myData, month):
+    x = numpy.arange(0, Nx, 1)
+    y = numpy.arange(0, Ny, 1)
+    xgrid, ygrid = numpy.meshgrid(x, y)
+    zgrid = numpy.zeros((Ny, Nx))
+    for i in range(Ny):
+        for j in range(Nx):
+            zgrid[i, j] = myData.matrix[i, j].oil_fund[month-1]
+    fiqure = plot.figure()
+    axes = plot.imshow(zgrid)
+    plot.colorbar()
+    axes.set_cmap("Blues_r")
+
+    plot.show()

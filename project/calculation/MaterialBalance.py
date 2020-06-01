@@ -6,6 +6,7 @@ import numpy as np
 import time
 import copy
 import math
+from project.visualisation import drawing
 
 
 def MB_calculation(Nx, Ny, DesignVariant, calculation_steps):
@@ -202,17 +203,17 @@ def MB_calculation(Nx, Ny, DesignVariant, calculation_steps):
 
 if __name__ == "__main__":
     Nx = 10
-    Ny = 1
-    DesignVariant = [(int(0), int(0), "extract"), (int(Ny-1), int(Nx-1), "inject")]
-    months = 200
+    Ny = 10
+    DesignVariant = [(0, 0, "extract"), (0, 4, "extract"), (0, int(9), "extract"), (int(9), 0, "extract"),
+                     (0, int(1), "extract"), (0, int(6), "extract"), (int(5), int(5), "inject")]
+    months = 12
     calculatedObject = MB_calculation(Nx, Ny, DesignVariant, months)
     for mounth in range(months):
         print(f"нысыщение блоков водой на {mounth} месяц")
         for i in range(Ny):
             for j in range(Nx):
-                for_print = str(calculatedObject.matrix[i, j].water_fund[mounth]/calculatedObject.matrix[i,j].fluid_fund[mounth])
+                for_print = str(calculatedObject.matrix[i, j].water_fund[mounth]/calculatedObject.matrix[i,j].oil_fund[mounth])
                 print(for_print, end="|")
             print(f"\n{'-' * Nx * Ny }")
 
-    for cell in range(Nx*Ny):
-        print(calculatedObject.cells_numbers[cell].oil_fund)
+    drawing.draw_oil_saturation(Nx, Ny, calculatedObject, months)

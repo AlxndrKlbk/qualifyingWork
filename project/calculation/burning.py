@@ -36,7 +36,7 @@ months = int(input("введите число месяцев для прогно
 DesignVariant = [(int(Ny/2), int(Nx/2), "extract")]
 
 "# задаю предполагаемый охват у скважины"
-coverage = [250, 300, 400]
+coverage = [400]
 wells_amount = []
 for item in coverage:
     wells_amount.append((Nx*Ny*(100**2)//(item**2)))
@@ -96,5 +96,5 @@ for wells in wells_amount:
 
     drawing.draw_pressure_graph(Nx, Ny, result, months)
     drawing.draw_NPV_grapg(economic_list)
-
+    drawing.draw_oil_saturation(Nx, Ny, result, months)
 print(f"итераций {k}")
